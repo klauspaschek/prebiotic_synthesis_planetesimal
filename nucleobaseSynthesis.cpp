@@ -52,7 +52,7 @@ int main()
     ////
     // Wanted nucleobase
     ////
-    char nucleobaseStr[TQSTRLEN] = "C5H5N5";
+    char nucleobaseStr[TQSTRLEN] = "ADENINE";
 
 
     ////
@@ -60,7 +60,7 @@ int main()
     ////
 
     // Input
-    std::string thermoChemFileName("moleculeData100barAdenine-3.dat");
+    std::string thermoChemFileName("./input_ChemApp/adenine_3_100bar.dat");
     std::string tempsFileName     ("inputPressureTemps.dat");
     std::string initConcFileName  ("initialConcentrations.dat");
 

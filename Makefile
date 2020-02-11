@@ -6,7 +6,7 @@ EXTRACLIBS= -lf2c -lm -lgfortran
 EXTRALDFLAGS =
 EXTRALDLIBS = -lstdc++
 
-LIBS = ../calight-v740/libChemAppC.a ../calight-v740/libLChemApp.a
+LIBS = ./calight-v740/libChemAppC.a ./calight-v740/libLChemApp.a
 
 # This examples Makefile uses the STATIC version of ChemApp. If your
 # distribution also contains the SHARED version of the ChemApp
