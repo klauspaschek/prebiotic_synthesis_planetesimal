@@ -31,9 +31,13 @@
 #include <iterator>
 #include <utility>
 #include <cstring>
+#include <cctype>
+#include <algorithm>
+#include <exception>
 
 // ChemApp
 #include "cacint.h"
+
 
 
 // If a ChemApp error occures, this function reports the error number and the
@@ -47,20 +51,74 @@ void abortProg(int lineNo, std::string funcName, LI errorNo)
 }
 
 
-int main()
+// Custom exception class
+class ErrorStr : public std::exception
+{
+    private:
+        std::string m_message;
+
+    public:
+        ErrorStr(std::string message)
+        : m_message(message)
+        {}
+        ErrorStr() = delete;
+
+        virtual const char* what() const noexcept override
+        {
+            return m_message.c_str();
+        }
+};
+
+
+int main(int argc, char** argv)
 {
     ////
-    // Wanted nucleobase
+    // Processing of command line arguments
     ////
-    char nucleobaseStr[TQSTRLEN] = "ADENINE";
 
+    // Check if command line arguments are provided by user
+    if (argc != 4)
+    {
+        std::string errorStr("Error: Command line argument(s) missing.\n" \
+                             "When running this program, you have to " \
+                             "provide 3 command line arguments:\n" \
+                             "./nucleobaseSynthesis <Target nucleobase> " \
+                             "<Reaction no.> <Pressure in bar>");
+        throw ErrorStr(errorStr);
+    }
+
+
+
+    // Target nucleobase (first command line argument)
+    // Lowercase string for use with Python/R script
+    std::string nucleobaseStrPyR(argv[1]);
+    std::transform(nucleobaseStrPyR.begin(), nucleobaseStrPyR.end(),
+                   nucleobaseStrPyR.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+    // Uppercase char array for use with ChemApp
+    char nucleobaseStr[TQSTRLEN];
+    std::strcpy(nucleobaseStr, argv[1]);
+    for (std::size_t i(0); i < TQSTRLEN; ++i)
+        nucleobaseStr[i] = std::toupper(nucleobaseStr[i]);
+
+
+    ////
+    // Execute python3 script to create thermochemical input file for ChemApp
+    ////
+    std::string command("python3 fit_gibbs_energy.py " + nucleobaseStrPyR +
+                        " " + argv[2] + " " + argv[3]);
+    int pythonReturn(std::system(command.c_str()));
+    // Check if python3 script executes without terminating
+    if (pythonReturn != 0)
+        throw ErrorStr("Python3 script terminated with an error");
 
     ////
     // Input/output file names
     ////
 
     // Input
-    std::string thermoChemFileName("./input_ChemApp/adenine_3_100bar.dat");
+    std::string thermoChemFileName("./input_ChemApp/" + nucleobaseStrPyR +
+                                   "_" + argv[2] + "_" + argv[3] + "bar.dat");
     std::string tempsFileName     ("inputPressureTemps.dat");
     std::string initConcFileName  ("initialConcentrations.dat");
 
@@ -72,14 +130,13 @@ int main()
     std::string molMassFileName   ("moleMasses.dat");
 
 
-    // Error return variable that will be checked after each call of a ChemApp
-    // routine
-    LI err;
-
-
     ////
     // ChemApp starter routines
     ////
+
+    // Error return variable that will be checked after each call of a ChemApp
+    // routine
+    LI err;
 
     // Initialize ChemApp
     tqini(&err);

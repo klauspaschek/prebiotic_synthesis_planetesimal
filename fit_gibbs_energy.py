@@ -9,6 +9,42 @@ import rpy2.robjects.pandas2ri
 import math
 import datetime
 import calendar
+import sys
+import csv
+
+
+####
+# Calculate approximate boiling point temperature T of water as function of
+# pressure P by using an approximation for the pressure temperature dependence
+# P(T) = f(T). By rearranging the formula as P(T) - f(T) = g(T) = 0 and finding
+# the root using the Newton-Raphson method this formula is solved for T.
+####
+# Parameters: pressure    : float
+#                 Pressure in unit [bar].
+####
+# Returns:    temperature : float
+#                 Temperature of boiling point of water in Kelvin.
+def water_boiling_point(pressure):
+    # Parameters of approximating function for temperature pressure dependence
+    a = -6094.4642
+    b = 21.1249952
+    c = -2.7245552e-2
+    d = 1.6853396e-5
+    e = 2.4575506
+
+    # Rearranged function P(T) - f(T)
+    def f(T):
+        return pressure - np.exp(a / T + b + c * T + d * T**2 + \
+                                 e * np.log(T)) * 1e-5
+
+    # Derivative of f(T)
+    def fprime(T):
+        return -np.exp(a / T + b + c * T + d * T**2 + e * np.log(T)) * \
+               (-a / T**2 + c + 2 * d * T + e / T) * 1e-5
+
+    temperature = scipy.optimize.newton(f, 1000, fprime = fprime)
+
+    return temperature
 
 
 ####
@@ -20,24 +56,28 @@ import calendar
 #             phase    : str
 #                 String containing the name of the wanted phase of the
 #                 molecule as stored in the R 'CHNOSZ' database.
+#             tempMax  : float
+#                 Temperature up to which data should be acquired in unit
+#                 Kelvin.
 ####
 # Returns:    out      : numpy.2darray
 #                 Contains temperatures as first and corresponding Gibbs
 #                 energies as second element.
-def get_R_data(molecule, phase):
+def get_R_data(molecule, phase, tempMax):
+    tempMaxStr = '{:.2f}'.format(tempMax)
+
+    # Use rpy2 library to start R session and obtain data
     # Load database in R
     ro.packages.importr('CHNOSZ')
 
-    pressure = str(100)
-
-    # Change units to kelvin and bar
+    # Change units to Kelvin and bar
     ro.r('T.units(\'K\')')
     ro.r('P.units(\'bar\')')
 
     # Compose command to obtain data from R as string
     Rcommand =  'subcrt(info(\'' + molecule + '\', state = \'' + phase
-    Rcommand += '\')[[1]], T = seq(273.15, 584.18, length.out = 200), P = '
-    Rcommand += pressure + ')'
+    Rcommand += '\')[[1]], T = seq(273.15, ' + tempMaxStr + ', '
+    Rcommand += 'length.out = 200), P = ' + str(pressure) + ')'
 
     # Get data as R dataframe
     hyd = ro.r(Rcommand)
@@ -69,9 +109,11 @@ def get_R_data(molecule, phase):
 #                 phase and third for condensed phase. Keys of dictionaries are
 #                 the names of the molecules as string and values are
 #                 numpy.arrays containing the coefficents. Will be returned.
+#             pressure : float
+#                 Pressure in unit [bar].
 #             plot     : boolean, optional
 #                 Whether to fit the data and the fit and store them in
-#                 './plots/' subdirectory. Default is True.
+#                 './fit_plots' subdirectory. Default is True.
 ####
 # Returns:    coeffs   : list of dict
 #                 List of dictionaries to add new fitted coefficients. First
@@ -79,13 +121,13 @@ def get_R_data(molecule, phase):
 #                 phase and third for condensed phase. Keys of dictionaries are
 #                 the names of the molecules as string and values are
 #                 numpy.arrays containing the coefficents.
-def fit_gibbs_energy(molecule, phase, coeffs, plot = True):
+def fit_gibbs_energy(molecule, phase, coeffs, pressure, plot = True):
     # Fit function for Gibbs energy
     def gibbs_energy(T, a, b, c, d, e, f):
         return a + b * T + c * T * np.log(T) + d * T**2 + e * T**3 + f / T
 
     # Obtain data from R database 'CHNOSZ'
-    data = get_R_data(molecule, phase)
+    data = get_R_data(molecule, phase, pressure)
 
     # Fit gibbs energy coefficients
     popt, pcov = scipy.optimize.curve_fit(gibbs_energy, data[0], data[1])
@@ -163,9 +205,11 @@ elementsMass = {'H':  1.008,
 #                 Name of nucleobase reaction results in.
 #             reactionNum : int
 #                 Number of reaction.
+#             tempMax     : float
+#                 Temperature up to which data is valid in unit Kelvin.
 ####
 # Returns:    <no return>
-def input_file_ChemApp(coeffs, nucleobase, reactionNum):
+def input_file_ChemApp(coeffs, nucleobase, reactionNum, tempMax):
     # Identify for molecules necessary elements
     elementsSet = set()
     for phase in coeffs:
@@ -274,20 +318,65 @@ def input_file_ChemApp(coeffs, nucleobase, reactionNum):
                         coeffsList = np.append(tempMax, coeffsList)
                         for i in range(len(coeffsList)):
                             if i % 5 != 0 or i == 0:
-                                f.write(to_15_str(str(coeffsList[i])))
+                                valueStr = '{:.5f}'.format(coeffsList[i])
+                                f.write(to_15_str(valueStr))
                             else:
-                                f.write('\n' + to_15_str(str(coeffsList[i])))
+                                valueStr = '{:.5f}'.format(coeffsList[i])
+                                f.write('\n' + to_15_str(valueStr))
 
-                    write_gibbs_coeffs(coeffs[i][molecule].round(5), 584.18)
+                    write_gibbs_coeffs(coeffs[i][molecule], tempMax)
                     f.write('\n')
 
 
+# Check if command line arguments are provided
+if len(sys.argv) != 4:
+    errorStr =  'Command line argument(s) missing. When running '
+    errorStr += 'this program, you have to provide 3 command line '
+    errorStr += 'arguments:\npython3 fit_gibbs_energy.py <Target '
+    errorStr += 'nucleobase> <Reaction no.> <Pressure in bar>'
+    raise ValueError(errorStr);
 
+# Command line arguments
+targetNucleobase =       sys.argv[1]
+reactionNo       =       sys.argv[2]
+pressure         = float(sys.argv[3])
+
+# Calculate temperature of boiling point of water as upper bound for data
+# acquisition
+tempMax = water_boiling_point(pressure)
+
+# Read input file containing information about reactants involved in reaction
+# in './reaction_info' subdirectory
+inputDir = pathlib.Path('.') / 'reaction_info'
+if not inputDir.is_dir():
+    errorStr =  'Directory \'./' + str(inputDir) + '\' for input file '
+    errorStr += 'containing information about reactants involved in reaction '
+    errorStr += 'not found'
+    raise NotADirectoryError(errorStr)
+inputFileName = targetNucleobase + '_' + reactionNo + '_reactants.dat'
+inputPath     = inputDir / inputFileName
+if not inputPath.is_file():
+    errorStr =  'File \'./' + str(inputPath) + '\' '
+    errorStr += 'containing information about reactants involved in reaction '
+    errorStr += 'not found'
+    raise FileNotFoundError(errorStr)
+
+reactants = []
+with inputPath.open() as f:
+    readReactants = csv.reader(f, delimiter = ',')
+    for row in readReactants:
+        reactants.append([row[0], row[1]])
+
+# Calculate Gibbs energy coefficients for reactants read from input file
 coeffs = [{}, {}, {}]
-coeffs = fit_gibbs_energy('HCN', 'aq', coeffs)
-coeffs = fit_gibbs_energy('adenine', 'aq', coeffs)
+for i in range(1, len(reactants)):
+    coeffs = fit_gibbs_energy(reactants[i][0], reactants[i][1],
+                              coeffs, tempMax)
+
+#coeffs = fit_gibbs_energy('HCN', 'aq', coeffs, tempMax)
+#coeffs = fit_gibbs_energy('adenine', 'aq', coeffs, tempMax)
 #coeffs = fit_gibbs_energy('H2O', 'aq', coeffs)
 #coeffs = fit_gibbs_energy('adenine', 'cr', coeffs)
 #coeffs = fit_gibbs_energy('NH3', 'gas', coeffs)
 
-input_file_ChemApp(coeffs, 'adenine', 3)
+input_file_ChemApp(coeffs, targetNucleobase, reactionNo, tempMax)
