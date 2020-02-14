@@ -34,6 +34,7 @@
 #include <cctype>
 #include <algorithm>
 #include <exception>
+#include <locale>
 
 // ChemApp
 #include "cacint.h"
@@ -70,6 +71,24 @@ class ErrorStr : public std::exception
 };
 
 
+// Use comma ',' as delimiter in stream classes of std::
+// For example to read '.csv' files
+struct CSVDelimiter : std::ctype<char>
+{
+    CSVDelimiter()
+    : std::ctype<char>(get_table())
+    {}
+
+    static mask const* get_table()
+    {
+        static mask rc[table_size];
+        rc[','] = std::ctype_base::space;
+        rc['\n'] = std::ctype_base::space;
+        return &rc[0];
+    }
+};
+
+
 int main(int argc, char** argv)
 {
     ////
@@ -87,8 +106,6 @@ int main(int argc, char** argv)
         throw ErrorStr(errorStr);
     }
 
-
-
     // Target nucleobase (first command line argument)
     // Lowercase string for use with Python/R script
     std::string nucleobaseStrPyR(argv[1]);
@@ -100,6 +117,27 @@ int main(int argc, char** argv)
     std::strcpy(nucleobaseStr, argv[1]);
     for (std::size_t i(0); i < TQSTRLEN; ++i)
         nucleobaseStr[i] = std::toupper(nucleobaseStr[i]);
+
+    // Obtain role of water in reaction from first line of file stored in
+    // './reaction_info' subdirectory
+    std::string reactantsFileName("./reaction_info/" + nucleobaseStrPyR +
+                                  "_" + argv[2] + "_reactants.dat");
+    std::ifstream reactantsFile(reactantsFileName);
+    reactantsFile.imbue(std::locale(reactantsFile.getloc(), new CSVDelimiter));
+    std::istream_iterator<std::string> startReact(reactantsFile), endReact;
+    std::vector<std::string> reactants(startReact, endReact);
+    std::string waterRole(reactants[1]);
+
+    if (waterRole != "solvent" && waterRole != "reactant" &&
+        waterRole != "product")
+    {
+        std::string errorStr("Error: Role of water in reaction has to be " \
+                             "specified in first line of file \'" +
+                             reactantsFileName + "\' as:\n" \
+                             "H2O,solvent  OR\nH2O,reactant OR\n" \
+                             "H2O,product");
+        throw  ErrorStr(errorStr);
+    }
 
 
     ////
@@ -427,8 +465,8 @@ int main(int argc, char** argv)
     std::string dummyStr;
     DB pressure;
     tempsFile >> dummyStr >> pressure;
-    std::istream_iterator<DB> start(tempsFile), end;
-    std::vector<DB> temps(start, end);
+    std::istream_iterator<DB> startTemps(tempsFile), endTemps;
+    std::vector<DB> temps(startTemps, endTemps);
 
     // Open resulting files containing nucleobase amounts and molecular masses
     std::ofstream amountsFile(amountsFileName);
@@ -576,6 +614,14 @@ int main(int argc, char** argv)
 
         // If part of reaction, get concentration of water
         DB waterConc(100.0);
+        // Throw exception, if role of water is given as "solvent", but water
+        // was not given in reaction
+        if (waterRole == "solvent" && indicesWater.size() != 0)
+        {
+            std::string errorStr("Role of water was given inconsistent to " \
+                                 "appearence of water as reagent in reaction");
+            throw ErrorStr(errorStr);
+        }
         if (indicesWater.size() != 0)
         {
             for (std::pair<LI, LI> indices:indicesWater)
@@ -585,9 +631,23 @@ int main(int argc, char** argv)
                        &phaseWaterConc, &err);
                 if (err) abortProg(__LINE__, "tqgetr", err);
 
-                waterConc += phaseWaterConc;
+                if (waterRole == "reactant")
+                    waterConc -= phaseWaterConc;
+                else if (waterRole == "product")
+                {
+                    waterConc += phaseWaterConc;
+                    std::cout << "Schinken!" << std::endl;
+                }
+                else
+                {
+                    std::string errorStr("Role of water was given " \
+                                         "inconsistent to appearence of " \
+                                         "water as reagent in reaction");
+                    throw ErrorStr(errorStr);
+                }
             }
         }
+        std::cout << waterConc << std::endl;
 
         // Collect total adenine abundance in moles
         DB nucleobaseConc(0);
