@@ -1,50 +1,31 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize
-import pathlib
 import pandas as pd
+import pathlib
 import rpy2.robjects as ro
 import rpy2.robjects.packages
 import rpy2.robjects.pandas2ri
 import math
 import datetime
 import calendar
-import sys
-import csv
 
 
-####
-# Calculate approximate boiling point temperature T of water as function of
-# pressure P by using an approximation for the pressure temperature dependence
-# P(T) = f(T). By rearranging the formula as P(T) - f(T) = g(T) = 0 and finding
-# the root using the Newton-Raphson method this formula is solved for T.
-####
-# Parameters: pressure    : float
-#                 Pressure in unit [bar].
-####
-# Returns:    temperature : float
-#                 Temperature of boiling point of water in Kelvin.
-def water_boiling_point(pressure):
-    # Parameters of approximating function for temperature pressure dependence
-    a = -6094.4642
-    b = 21.1249952
-    c = -2.7245552e-2
-    d = 1.6853396e-5
-    e = 2.4575506
 
-    # Rearranged function P(T) - f(T)
-    def f(T):
-        return pressure - np.exp(a / T + b + c * T + d * T**2 + \
-                                 e * np.log(T)) * 1e-5
+# Elementary molecule composition
+elementsCompData = [{'H': 1, 'C': 1, 'N': 1},    # HCN
+                    {'H': 5, 'C': 5, 'N': 5},    # adenine
+                    {'H': 2, 'O': 1},            # water
+                    {'H': 3, 'N': 1}]            # NH3
+elementsCompIndices = ['HCN', 'adenine', 'H2O', 'NH3']
+elementsComp = pd.DataFrame(elementsCompData, index = elementsCompIndices,
+                            dtype = float)
 
-    # Derivative of f(T)
-    def fprime(T):
-        return -np.exp(a / T + b + c * T + d * T**2 + e * np.log(T)) * \
-               (-a / T**2 + c + 2 * d * T + e / T) * 1e-5
-
-    temperature = scipy.optimize.newton(f, 1000, fprime = fprime)
-
-    return temperature
+# Element masses (unit [u])
+elementsMass = {'H':  1.008,
+                'C': 12.011,
+                'N': 14.007,
+                'O': 15.999}
 
 
 ####
@@ -56,6 +37,8 @@ def water_boiling_point(pressure):
 #             phase    : str
 #                 String containing the name of the wanted phase of the
 #                 molecule as stored in the R 'CHNOSZ' database.
+#             pressure : float
+#                 Pressure in unit [bar].
 #             tempMax  : float
 #                 Temperature up to which data should be acquired in unit
 #                 Kelvin.
@@ -63,7 +46,7 @@ def water_boiling_point(pressure):
 # Returns:    out      : numpy.2darray
 #                 Contains temperatures as first and corresponding Gibbs
 #                 energies as second element.
-def get_R_data(molecule, phase, tempMax):
+def R_data(molecule, phase, pressure, tempMax):
     tempMaxStr = '{:.2f}'.format(tempMax)
 
     # Use rpy2 library to start R session and obtain data
@@ -103,42 +86,50 @@ def get_R_data(molecule, phase, tempMax):
 #             phase    : str
 #                 String containing the name of the wanted phase of the
 #                 molecule as stored in the R 'CHNOSZ' database.
-#             coeffs   : list of dict
+#             initConc : float
+#                 Initial concentration in unit [mol X/mol H2O].
+#             coeffs   : list of dict of list
 #                 List of dictionaries to add new fitted coefficients. First
 #                 element contains dictionary for gas phase, second for aqeous
 #                 phase and third for condensed phase. Keys of dictionaries are
-#                 the names of the molecules as string and values are
-#                 numpy.arrays containing the coefficents. Will be returned.
+#                 the names of the molecules as string and values are a list
+#                 with numpy.array containing the coefficents as first element
+#                 and given initial Conc 'initConc' as second element.
+#                 Will be returned.
 #             pressure : float
 #                 Pressure in unit [bar].
+#             tempMax  : float
+#                 Temperature up to which data should be acquired in unit
+#                 Kelvin.
 #             plot     : boolean, optional
 #                 Whether to fit the data and the fit and store them in
 #                 './fit_plots' subdirectory. Default is True.
 ####
-# Returns:    coeffs   : list of dict
+# Returns:    coeffs   : list of dict of list
 #                 List of dictionaries to add new fitted coefficients. First
 #                 element contains dictionary for gas phase, second for aqeous
 #                 phase and third for condensed phase. Keys of dictionaries are
-#                 the names of the molecules as string and values are
-#                 numpy.arrays containing the coefficents.
-def fit_gibbs_energy(molecule, phase, coeffs, pressure, plot = True):
+#                 the names of the molecules as string and values are a list
+#                 with numpy.array containing the coefficents as first element
+#                 and given initial Conc 'initConc' as second element.
+def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot = True):
     # Fit function for Gibbs energy
     def gibbs_energy(T, a, b, c, d, e, f):
         return a + b * T + c * T * np.log(T) + d * T**2 + e * T**3 + f / T
 
     # Obtain data from R database 'CHNOSZ'
-    data = get_R_data(molecule, phase, pressure)
+    data = R_data(molecule, phase, pressure, tempMax)
 
     # Fit gibbs energy coefficients
     popt, pcov = scipy.optimize.curve_fit(gibbs_energy, data[0], data[1])
 
     # Collect them in list of dict
     if phase == 'gas':
-        coeffs[0][molecule] = popt
+        coeffs[0][molecule] = [popt, initConc]
     elif phase == 'aq':
-        coeffs[1][molecule] = popt
+        coeffs[1][molecule] = [popt, initConc]
     elif phase == 'cr':
-        coeffs[2][molecule] = popt
+        coeffs[2][molecule] = [popt, initConc]
     else:
         errStr  = '\'' + phase + '\' as phase argument not allowed, '
         errStr += 'has to be either \'gas\', \'aq\' or \'cr\'!'
@@ -176,40 +167,30 @@ def fit_gibbs_energy(molecule, phase, coeffs, pressure, plot = True):
     return coeffs
 
 
-# Elementary molecule composition
-elementsCompData = [{'H': 1, 'C': 1, 'N': 1},    # HCN
-                    {'H': 5, 'C': 5, 'N': 5},    # adenine
-                    {'H': 2, 'O': 1},            # water
-                    {'H': 3, 'N': 1}]            # NH3
-elementsCompIndices = ['HCN', 'adenine', 'H2O', 'NH3']
-elementsComp = pd.DataFrame(elementsCompData, index = elementsCompIndices,
-                            dtype = float)
-
-# Element masses (unit [u])
-elementsMass = {'H':  1.008,
-                'C': 12.011,
-                'N': 14.007,
-                'O': 15.999}
-
 ####
 # Write ChemApp input file and store in './input_ChemApp/' subdirectory
 ####
-# Parameters: coeffs      : list of dict
+# Parameters: coeffs        : list of dict of list
 #                 List of dictionaries containing fitted Gibbs energy
 #                 coefficients. First element has to contain dictionary for gas
 #                 phase, second for aqeous phase and third for condensed phase.
 #                 Keys of dictionaries have to be the names of the molecules as
-#                 string and values are numpy.arrays containing the
-#                 coefficents.
-#             nucleobase  : str
+#                 string and values are a list with numpy.array containing the
+#                 coefficents as first element and given initial concentration
+#                 as second element.
+#             nucleobase    : str
 #                 Name of nucleobase reaction results in.
-#             reactionNum : int
+#             reactionNum   : int
 #                 Number of reaction.
-#             tempMax     : float
+#             pressure : float
+#                 Pressure in unit [bar].
+#             tempMax       : float
 #                 Temperature up to which data is valid in unit Kelvin.
 ####
-# Returns:    <no return>
-def input_file_ChemApp(coeffs, nucleobase, reactionNum, tempMax):
+# Returns:    initConcs : list of float
+#                 List of inital concentrations of molecules in order they
+#                 where written to ChemApp input file.
+def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
     # Identify for molecules necessary elements
     elementsSet = set()
     for phase in coeffs:
@@ -223,9 +204,10 @@ def input_file_ChemApp(coeffs, nucleobase, reactionNum, tempMax):
     fileDir = pathlib.Path('.') / 'input_ChemApp'
     # Create subdirectory if necessary
     fileDir.mkdir(exist_ok = True)
-    filePath = fileDir / (nucleobase + '_' + str(reactionNum) + '_100bar' +
-                          '.dat')
+    filePath = fileDir / (nucleobase + '_' + str(reactionNum) + '_' +
+                          str(int(pressure)) + 'bar.dat')
 
+    initConcs = []
     with filePath.open(mode = 'w') as f:
         ####
         # Header lines
@@ -301,6 +283,9 @@ def input_file_ChemApp(coeffs, nucleobase, reactionNum, tempMax):
 
                 for molecule in coeffs[i]:
                     f.write(to_FORTRAN_str(molecule.upper()) + '\n')
+                    # Store initial concentrations in order they are written to
+                    # file
+                    initConcs.append(coeffs[i][molecule][1])
                     f.write('1  1   ')
                     for element in elementsList:
                         f.write(str(np.nan_to_num(elementsComp.loc[molecule,
@@ -324,59 +309,7 @@ def input_file_ChemApp(coeffs, nucleobase, reactionNum, tempMax):
                                 valueStr = '{:.5f}'.format(coeffsList[i])
                                 f.write('\n' + to_15_str(valueStr))
 
-                    write_gibbs_coeffs(coeffs[i][molecule], tempMax)
+                    write_gibbs_coeffs(coeffs[i][molecule][0], tempMax)
                     f.write('\n')
 
-
-# Check if command line arguments are provided
-if len(sys.argv) != 4:
-    errorStr =  'Command line argument(s) missing. When running '
-    errorStr += 'this program, you have to provide 3 command line '
-    errorStr += 'arguments:\npython3 fit_gibbs_energy.py <Target '
-    errorStr += 'nucleobase> <Reaction no.> <Pressure in bar>'
-    raise ValueError(errorStr);
-
-# Command line arguments
-targetNucleobase =       sys.argv[1]
-reactionNo       =       sys.argv[2]
-pressure         = float(sys.argv[3])
-
-# Calculate temperature of boiling point of water as upper bound for data
-# acquisition
-tempMax = water_boiling_point(pressure)
-
-# Read input file containing information about reactants involved in reaction
-# in './reaction_info' subdirectory
-inputDir = pathlib.Path('.') / 'reaction_info'
-if not inputDir.is_dir():
-    errorStr =  'Directory \'./' + str(inputDir) + '\' for input file '
-    errorStr += 'containing information about reactants involved in reaction '
-    errorStr += 'not found'
-    raise NotADirectoryError(errorStr)
-inputFileName = targetNucleobase + '_' + reactionNo + '_reactants.dat'
-inputPath     = inputDir / inputFileName
-if not inputPath.is_file():
-    errorStr =  'File \'./' + str(inputPath) + '\' '
-    errorStr += 'containing information about reactants involved in reaction '
-    errorStr += 'not found'
-    raise FileNotFoundError(errorStr)
-
-reactants = []
-with inputPath.open() as f:
-    readReactants = csv.reader(f, delimiter = ',')
-    for row in readReactants:
-        reactants.append([row[0], row[1]])
-
-# Calculate Gibbs energy coefficients for reactants read from input file
-coeffs = [{}, {}, {}]
-for i in range(1, len(reactants)):
-    coeffs = fit_gibbs_energy(reactants[i][0], reactants[i][1],
-                              coeffs, tempMax)
-
-#coeffs = fit_gibbs_energy('HCN', 'aq', coeffs, tempMax)
-#coeffs = fit_gibbs_energy('adenine', 'aq', coeffs, tempMax)
-#coeffs = fit_gibbs_energy('H2O', 'aq', coeffs)
-#coeffs = fit_gibbs_energy('adenine', 'cr', coeffs)
-#coeffs = fit_gibbs_energy('NH3', 'gas', coeffs)
-
-input_file_ChemApp(coeffs, targetNucleobase, reactionNo, tempMax)
+    return initConcs
