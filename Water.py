@@ -1,20 +1,29 @@
+"""
+Calculate the temperature of the boiling point of water for different pressures
+by 'inverting' an approximation formula using Newton-Raphson.
+"""
+
 import numpy as np
 import scipy.optimize
 
 
 
-####
-# Calculate approximate boiling point temperature T of water as function of
-# pressure P by using an approximation for the pressure temperature dependence
-# P(T) = f(T). By rearranging the formula as P(T) - f(T) = g(T) = 0 and finding
-# the root using the Newton-Raphson method this formula is solved for T.
-####
-# Parameters: pressure    : float
-#                 Pressure in unit [bar].
-####
-# Returns:    temperature : float
-#                 Temperature of boiling point of water in Kelvin.
 def boiling_point(pressure):
+    """
+    Calculate approximate boiling point temperature T of water as function of
+    pressure P by using an approximation for the pressure temperature
+    dependence P(T) = f(T). By rearranging the formula as
+    P(T) - f(T) = g(T) = 0 and finding the root using the Newton-Raphson method
+    this formula is solved for T. Return T as float.
+
+    Parameters:
+        pressure    : float
+            Pressure in unit [bar].
+
+    Returns:
+        temperature : float
+            Temperature of boiling point of water in Kelvin.
+    """
     # Parameters of approximating function for temperature pressure dependence
     a = -6094.4642
     b = 21.1249952

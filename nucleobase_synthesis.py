@@ -38,7 +38,7 @@ pressure         = float(sys.argv[3])
 # Read input file containing information about reactants involved in reaction
 # in './reaction_info' subdirectory
 # Directory and file path
-inputDir = pathlib.Path('.') / 'reaction_info'
+inputDir      = pathlib.Path('.') / 'reaction_info'
 inputFileName = targetNucleobase + '_' + reactionNo + '.csv'
 inputPath     = inputDir / inputFileName
 if not inputDir.is_dir():
@@ -99,7 +99,7 @@ ChemApp.start(err)
 # Path of thermochemical input file for ChemApp
 fileDir = pathlib.Path('.') / 'input_ChemApp'
 if not fileDir.is_dir():
-    errorStr =  'Directory \'' + str(resultsDir) + '\'necessary for ChemApp '
+    errorStr =  'Directory \'' + str(fileDir) + '\'necessary for ChemApp '
     errorStr += 'to read input file from not found'
     raise NotADirectoryError(errorStr)
 filePath = fileDir / (targetNucleobase + '_' + str(reactionNo) + '_' +
@@ -114,22 +114,43 @@ if not filePath.is_file():
 ChemApp.read_data(str(filePath), err)
 
 # Directory for ChemApp to write log files to
-resultsDir = pathlib.Path('.') / 'results'
-resultsDir.mkdir(exist_ok = True)
+logDir = pathlib.Path('.') / 'logs'
+logDir.mkdir(exist_ok = True)
 
+# Open log files
+ChemApp.open_file(str(logDir), err);
+
+# Do iteration over different temperatures
 temps = np.linspace(273.15, tempMax)
 amounts = np.empty(len(temps))
 for i in range(len(temps)):
     amounts[i] = ChemApp.amount(targetNucleobase, waterRole, initConcs,
-                                temps[i], pressure, str(resultsDir), err)
+                                temps[i], pressure, str(logDir), err)
 
+# Close log files
+ChemApp.close_file(err)
+
+# Save amounts in .csv file
+amountsFile = pathlib.Path('.') / (targetNucleobase + '_' + str(reactionNo) +
+                                   '_' + str(int(pressure)) +
+                                   'bar_amounts.csv')
+with amountsFile.open(mode = 'w') as f:
+    # Write header
+    f.write('Temperature[K],Amount[mol ' + targetNucleobase + '/mol H2O]\n')
+
+    for i in range(len(temps)):
+        f.write('{:.2f},{:.5e}\n'.format(temps[i], amounts[i]))
+
+# Print amounts to console
 for i in range(len(temps)):
     print('{:2.0f}   {:.2f}  {:.5e}'.format(i, temps[i], amounts[i]))
 
+# Plot
 fig, ax = plt.subplots()
 
 ax.plot(temps, amounts * 1e9)
 ax.set_yscale('log')
 ax.set_ylim(1, np.max(amounts * 1e9) * 2)
 
-plt.savefig(targetNucleobase + '_' + str(reactionNo) + '_amounts.pdf')
+plt.savefig(targetNucleobase + '_' + str(reactionNo) + '_' +
+            str(int(pressure)) + 'bar_amounts.png')

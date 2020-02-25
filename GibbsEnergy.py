@@ -1,3 +1,11 @@
+"""
+Obtain data for Gibbs energies of molecules from the R library 'CHNOSZ' for
+different temperatures T and pressures P, fit the Gibbs coefficients to the
+data following
+G(T) = a + b*T + c*T*log(T) + d*T^2 + e*T^3 + f/T
+and write them to ChemApp compatible data file.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize
@@ -28,25 +36,28 @@ elementsMass = {'H':  1.008,
                 'O': 15.999}
 
 
-####
-# Obtain data from R database 'CHNOSZ'
-####
-# Parameters: molecule : str
-#                 String containing the name of the wanted molecule as stored
-#                 in the R 'CHNOSZ' database.
-#             phase    : str
-#                 String containing the name of the wanted phase of the
-#                 molecule as stored in the R 'CHNOSZ' database.
-#             pressure : float
-#                 Pressure in unit [bar].
-#             tempMax  : float
-#                 Temperature up to which data should be acquired in unit
-#                 Kelvin.
-####
-# Returns:    out      : numpy.2darray
-#                 Contains temperatures as first and corresponding Gibbs
-#                 energies as second element.
 def R_data(molecule, phase, pressure, tempMax):
+    """
+    Obtain data from R database 'CHNOSZ' and return it as numpy.2darray.
+
+    Parameters:
+        molecule : str
+            String containing the name of the wanted molecule as stored
+            in the R 'CHNOSZ' database.
+        phase    : str
+            String containing the name of the wanted phase of the
+            molecule as stored in the R 'CHNOSZ' database.
+        pressure : float
+            Pressure in unit [bar].
+        tempMax  : float
+            Temperature up to which data should be acquired in unit
+            Kelvin.
+
+    Returns:
+        out      : numpy.2darray
+            Contains temperatures as first and corresponding Gibbs
+            energies as second element.
+    """
     tempMaxStr = '{:.2f}'.format(tempMax)
 
     # Use rpy2 library to start R session and obtain data
@@ -56,6 +67,7 @@ def R_data(molecule, phase, pressure, tempMax):
     # Change units to Kelvin and bar
     ro.r('T.units(\'K\')')
     ro.r('P.units(\'bar\')')
+    ro.r('E.units(\'J\')')
 
     # Compose command to obtain data from R as string
     Rcommand =  'subcrt(info(\'' + molecule + '\', state = \'' + phase
@@ -71,48 +83,48 @@ def R_data(molecule, phase, pressure, tempMax):
 
     out = np.transpose(pd_hyd[1][0][['T', 'G']].to_numpy())
 
-    # Change energy unit from [cal] to [kJ]
-    out[1] = out[1] * 4.1858 / 1e3
-
     return out
 
 
-####
-# Fit Gibbs energy coefficients and store them in dictionary
-####
-# Parameters: molecule : str
-#                 String containing the name of the wanted molecule as stored
-#                 in the R 'CHNOSZ' database.
-#             phase    : str
-#                 String containing the name of the wanted phase of the
-#                 molecule as stored in the R 'CHNOSZ' database.
-#             initConc : float
-#                 Initial concentration in unit [mol X/mol H2O].
-#             coeffs   : list of dict of list
-#                 List of dictionaries to add new fitted coefficients. First
-#                 element contains dictionary for gas phase, second for aqeous
-#                 phase and third for condensed phase. Keys of dictionaries are
-#                 the names of the molecules as string and values are a list
-#                 with numpy.array containing the coefficents as first element
-#                 and given initial Conc 'initConc' as second element.
-#                 Will be returned.
-#             pressure : float
-#                 Pressure in unit [bar].
-#             tempMax  : float
-#                 Temperature up to which data should be acquired in unit
-#                 Kelvin.
-#             plot     : boolean, optional
-#                 Whether to fit the data and the fit and store them in
-#                 './fit_plots' subdirectory. Default is True.
-####
-# Returns:    coeffs   : list of dict of list
-#                 List of dictionaries to add new fitted coefficients. First
-#                 element contains dictionary for gas phase, second for aqeous
-#                 phase and third for condensed phase. Keys of dictionaries are
-#                 the names of the molecules as string and values are a list
-#                 with numpy.array containing the coefficents as first element
-#                 and given initial Conc 'initConc' as second element.
 def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot = True):
+    """
+    Fit Gibbs energy coefficients and return them as list of dict of list.
+
+    Parameters:
+        molecule : str
+            String containing the name of the wanted molecule as stored
+            in the R 'CHNOSZ' database.
+        phase    : str
+            String containing the name of the wanted phase of the
+            molecule as stored in the R 'CHNOSZ' database.
+        initConc : float
+            Initial concentration in unit [mol X/mol H2O].
+        coeffs   : list of dict of list
+            List of dictionaries to add new fitted coefficients. First
+            element contains dictionary for gas phase, second for aqeous
+            phase and third for condensed phase. Keys of dictionaries are
+            the names of the molecules as string and values are a list
+            with numpy.array containing the coefficents as first element
+            and given initial Conc 'initConc' as second element.
+            Will be returned.
+        pressure : float
+            Pressure in unit [bar].
+        tempMax  : float
+            Temperature up to which data should be acquired in unit
+            Kelvin.
+        plot     : boolean, optional
+            Whether to fit the data and the fit and store them in
+            './fit_plots' subdirectory. Default is True.
+
+    Returns:
+        coeffs   : list of dict of list
+            List of dictionaries to add new fitted coefficients. First
+            element contains dictionary for gas phase, second for aqeous
+            phase and third for condensed phase. Keys of dictionaries are
+            the names of the molecules as string and values are a list
+            with numpy.array containing the coefficents as first element
+            and given initial concentration 'initConc' as second element.
+    """
     # Fit function for Gibbs energy
     def gibbs_energy(T, a, b, c, d, e, f):
         return a + b * T + c * T * np.log(T) + d * T**2 + e * T**3 + f / T
@@ -140,25 +152,28 @@ def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot = True):
         fig, ax = plt.subplots()
 
         # Data
-        ax.scatter(data[0], data[1], s = 7,
+        ax.scatter(data[0], data[1] * 1e-3, s = 7,
                    label = 'Data from CHNOSZ database')
+        ax.grid()
 
         # Fit
         fitLabel = 'Fit: %1.3f+%1.3fT+%1.3fTlogT+\n%1.3fT^2+%1.3fT^3+%1.3f/T' \
                    % tuple(popt)
-        ax.plot(data[0], gibbs_energy(data[0], *popt), color = 'C1',
+        ax.plot(data[0], gibbs_energy(data[0], *popt) * 1e-3, color = 'C1',
                 label = fitLabel)
 
         ax.set_xlabel('T [K]')
         ax.set_ylabel('Gibbs energy of formation [kJ/mol]')
-        plt.title(molecule + '(' + phase + ') at pressure of 100 bar')
+        plt.title(molecule + ' (' + phase + ') at pressure of ' +
+                  str(pressure) + ' bar')
         plt.legend()
 
         # Compose file path to store plot to
         fitPlotsDir  = pathlib.Path('.') / 'fit_plots'
         # Create subdirectory if necessary
         fitPlotsDir.mkdir(exist_ok = True)
-        plotFileName = molecule + '_' + phase + '_100atm_fit.png'
+        plotFileName = (molecule + '_' + phase + '_' + str(int(pressure)) +
+                        'bar_fit.png')
         plotPath     = fitPlotsDir / plotFileName
 
         # Save plot
@@ -167,30 +182,35 @@ def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot = True):
     return coeffs
 
 
-####
-# Write ChemApp input file and store in './input_ChemApp/' subdirectory
-####
-# Parameters: coeffs        : list of dict of list
-#                 List of dictionaries containing fitted Gibbs energy
-#                 coefficients. First element has to contain dictionary for gas
-#                 phase, second for aqeous phase and third for condensed phase.
-#                 Keys of dictionaries have to be the names of the molecules as
-#                 string and values are a list with numpy.array containing the
-#                 coefficents as first element and given initial concentration
-#                 as second element.
-#             nucleobase    : str
-#                 Name of nucleobase reaction results in.
-#             reactionNum   : int
-#                 Number of reaction.
-#             pressure : float
-#                 Pressure in unit [bar].
-#             tempMax       : float
-#                 Temperature up to which data is valid in unit Kelvin.
-####
-# Returns:    initConcs : list of float
-#                 List of inital concentrations of molecules in order they
-#                 where written to ChemApp input file.
 def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
+    """
+    Write ChemApp input file and store it in './input_ChemApp/' subdirectory.
+    Return initial concentrations in the order they were written to the file
+    as list of float.
+
+    Parameters:
+        coeffs      : list of dict of list
+            List of dictionaries containing fitted Gibbs energy
+            coefficients. First element has to contain dictionary for gas
+            phase, second for aqeous phase and third for condensed phase.
+            Keys of dictionaries have to be the names of the molecules as
+            string and values are a list with numpy.array containing the
+            coefficents as first element and given initial concentration
+            as second element.
+        nucleobase  : str
+            Name of nucleobase reaction results in.
+        reactionNum : int
+            Number of reaction.
+        pressure    : float
+            Pressure in unit [bar].
+        tempMax     : float
+                 Temperature up to which data is valid in unit Kelvin.
+
+    Returns:
+        initConcs   : list of float
+            List of inital concentrations of molecules in order they
+            where written to ChemApp input file.
+    """
     # Identify for molecules necessary elements
     elementsSet = set()
     for phase in coeffs:
@@ -225,9 +245,10 @@ def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
         # Number of constituents
         f.write(str(len(elementsList)) + '   ')
         # Numbers of mixing phases
-        numMixPhases = 0
-        for phase in coeffs:
-            numMixPhases += len(phase)
+        numMixPhases = 1
+        for phase in coeffs[1:]:
+            if len(phase) > 0:
+                numMixPhases += 1
         f.write(str(numMixPhases) + '  ')
         for phase in coeffs[:-1]:
             f.write(str(len(phase)) + '  ')

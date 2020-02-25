@@ -43,6 +43,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 namespace py = pybind11;
+using namespace pybind11::literals;
+
 
 
 // If a ChemApp error occures, this function reports the error number and the
@@ -376,23 +378,27 @@ void read_data(std::string fileName, LI& err)
 }
 
 
-void close_file(LI& err)
+void open_file(std::string logDir, LI& err)
 {
-    // Close file containing redirected results of ChemApp routines like
-    // 'tqcel' and 'tqshow'
-    tqclos(3, &err);
-    if (err) abort_prog(__LINE__, "tqclos", err);
+    // Truncate file containing molar masses
+    std::ofstream molMassFile(logDir + "/mole_masses.dat",
+                              std::ofstream::trunc);
 
-    // Redirect the output back to unit number 6 (standard output unit)
-    tqcio((char*)"LIST ", 6, &err);
+    // Redirect the results (output of ChemApp routines like 'tqcel' and
+    // 'tqshow') to an output file for viewing
+    tqcio((char*)"LIST ", 3, &err);
     if (err) abort_prog(__LINE__, "tqcio", err);
+
+    std::string resultsFileName(logDir + "/results.dat");
+    tqopen((char*)resultsFileName.c_str(), 3, &err);
+    if (err) abort_prog(__LINE__, "tqopen", err);
 }
 
 
 double amount(std::string nucleobase, std::string waterRole,
               std::vector<DB> concs,
               DB temperature, DB pressure,
-              std::string resultsDir,
+              std::string logDir,
               LI& err)
 {
     // Uppercase char array for use with ChemApp
@@ -402,7 +408,7 @@ double amount(std::string nucleobase, std::string waterRole,
         nucleobaseStr[i] = std::toupper(nucleobaseStr[i]);
 
     // Open file to store molecular masses
-    std::ofstream molMassFile(resultsDir + "/mole_masses.dat",
+    std::ofstream molMassFile(logDir + "/mole_masses.dat",
                               std::ofstream::app);
 
     // Set temperature and pressure
@@ -434,20 +440,6 @@ double amount(std::string nucleobase, std::string waterRole,
             ++indexConcs;
         }
     }
-
-    // Redirect the results (output of ChemApp routines like 'tqcel' and
-    // 'tqshow') to an output file for viewing
-    tqcio((char*)"LIST ", 3, &err);
-    if (err) abort_prog(__LINE__, "tqcio", err);
-
-    // Use static counter to get a new file for every run of this function
-    static int counter(0);
-    std::string resultsFileName(resultsDir + "/results_" +
-                                std::to_string(counter) +
-                                ".dat");
-    tqopen((char*)resultsFileName.c_str(), 3, &err);
-    if (err) abort_prog(__LINE__, "tqopen", err);
-    ++counter;
 
     // Use 'tqwstr' to write header to the output file
     tqwstr((char*)"LIST ", (char*)"RESULTS ", &err);
@@ -598,122 +590,38 @@ double amount(std::string nucleobase, std::string waterRole,
     DB nucleobaseRatio( (nucleobaseConc * molMassNucleobase)
                        /(waterConc      * 18.015));
 
-    // Close files
-    close_file(err);
-
     return static_cast<double>(nucleobaseRatio);
+}
+
+
+void close_file(LI& err)
+{
+    // Close file containing redirected results of ChemApp routines like
+    // 'tqcel' and 'tqshow'
+    tqclos(3, &err);
+    if (err) abort_prog(__LINE__, "tqclos", err);
+
+    // Redirect the output back to unit number 6 (standard output unit)
+    tqcio((char*)"LIST ", 6, &err);
+    if (err) abort_prog(__LINE__, "tqcio", err);
 }
 
 
 PYBIND11_MODULE(ChemApp, m)
 {
-    m.def("start", &start, "Start ChemApp");
-    m.def("read_data", &read_data, "Read input file into ChemApp");
-    m.def("amount", &amount, "Calculate equilibrium amount of nucleobase");
-}
+    m.doc() = "Calculate equlibrium amounts of nucleobases using a C++ port "
+              "of FORTRAN library ChemApp.";
 
-//int main(int argc, char** argv)
-//{
-//    ////
-//    // Processing of command line arguments
-//    ////
-//
-//    // Check if command line arguments are provided by user
-//    if (argc != 4)
-//    {
-//        std::string errorStr("Error: Command line argument(s) missing.\n" \
-//                             "When running this program, you have to " \
-//                             "provide 3 command line arguments:\n" \
-//                             "./nucleobaseSynthesis <Target nucleobase> " \
-//                             "<Reaction no.> <Pressure in bar>");
-//        throw ErrorStr(errorStr);
-//    }
-//
-//    // Target nucleobase (first command line argument)
-//    // Lowercase string for use with Python/R script
-//    std::string nucleobaseStrPyR(argv[1]);
-//    std::transform(nucleobaseStrPyR.begin(), nucleobaseStrPyR.end(),
-//                   nucleobaseStrPyR.begin(),
-//                   [](unsigned char c){ return std::tolower(c); });
-//    // Uppercase char array for use with ChemApp
-//    char nucleobaseStr[TQSTRLEN];
-//    std::strcpy(nucleobaseStr, argv[1]);
-//    for (std::size_t i(0); i < TQSTRLEN; ++i)
-//        nucleobaseStr[i] = std::toupper(nucleobaseStr[i]);
-//
-//    // Obtain role of water in reaction from first line of file stored in
-//    // './reaction_info' subdirectory
-//    std::string reactantsFileName("./reaction_info/" + nucleobaseStrPyR +
-//                                  "_" + argv[2] + "_reactants.dat");
-//    std::ifstream reactantsFile(reactantsFileName);
-//    reactantsFile.imbue(std::locale(reactantsFile.getloc(), new CSVDelimiter));
-//    std::istream_iterator<std::string> startReact(reactantsFile), endReact;
-//    std::vector<std::string> reactants(startReact, endReact);
-//    std::string waterRole(reactants[1]);
-//
-//    if (waterRole != "solvent" && waterRole != "reactant" &&
-//        waterRole != "product")
-//    {
-//        std::string errorStr("Error: Role of water in reaction has to be " \
-//                             "specified in first line of file \'" +
-//                             reactantsFileName + "\' as:\n" \
-//                             "H2O,solvent  OR\nH2O,reactant OR\n" \
-//                             "H2O,product");
-//        throw ErrorStr(errorStr);
-//    }
-//
-//
-////    ////
-////    // Execute python3 script to create thermochemical input file for ChemApp
-////    ////
-////    std::string command("python3 fit_gibbs_energy.py " + nucleobaseStrPyR +
-////                        " " + argv[2] + " " + argv[3]);
-////    int pythonReturn(std::system(command.c_str()));
-////    // Check if python3 script executes without terminating
-////    if (pythonReturn != 0)
-////        throw ErrorStr("Python3 script terminated with an error");
-//
-//    ////
-//    // Input/output file names
-//    ////
-//
-//    // Input
-//    std::string thermoChemFileName("./input_ChemApp/" + nucleobaseStrPyR +
-//                                   "_" + argv[2] + "_" + argv[3] + "bar.dat");
-//    std::string tempsFileName     ("inputPressureTemps.dat");
-//    std::string initConcFileName  ("initialConcentrations.dat");
-//
-//    // Output
-//    // File containing nucleobase amounts as main result of program
-//    std::string amountsFileName   ("adenine100barWaterRatio-3.dat");
-//    // File containing molar masses and conditions for individual equilibrium
-//    // calculations
-//    std::string molMassFileName   ("moleMasses.dat");
-//
-//
-//    ////
-//    // ChemApp starter routines
-//    ////
-//
-//    // Error return variable that will be checked after each call of a ChemApp
-//    // routine
-//    LI err;
-//
-//
-//    ////
-//    // ChemApp data collection
-//    ////
-//
-//
-//    ////
-//    // Main Program
-//    ////
-//
-//
-//    ////
-//    // Closing routines
-//    ////
-//
-//
-//    return 0;
-//}
+    m.def("start", &start, "Start ChemApp.",
+          "err"_a);
+    m.def("read_data", &read_data, "Read input file into ChemApp.",
+          "logDir"_a, "err"_a);
+    m.def("open_file", &open_file, "Open log files.",
+          "logDir"_a, "err"_a);
+    m.def("amount", &amount, "Calculate equilibrium amount of nucleobase and "
+          "return as float.",
+          "nucleobase"_a, "waterRole"_a, "concs"_a, "temperature"_a,
+          "pressure"_a, "logDir"_a, "err"_a);
+    m.def("close_file", &close_file, "Close log files.",
+          "err"_a);
+}
