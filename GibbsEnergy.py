@@ -35,6 +35,26 @@ elementsMass = {'H':  1.008,
                 'N': 14.007,
                 'O': 15.999}
 
+def molar_mass(molecule):
+    '''
+    Caclulate molar mass of given molecule.
+
+    Parameters:
+        molecule : str
+            Name of molecule.
+
+    Returns:
+        mass     : float
+            Molar mass of molecule in unit [u] or [g/mol].
+    '''
+    atoms = elementsComp.loc[molecule, :]
+    mass = 0
+    for atom, number in atoms.items():
+        if not np.isnan(number):
+            mass += number * elementsMass[atom]
+
+    return mass
+
 
 def R_data(molecule, phase, pressure, tempMax):
     """
@@ -173,7 +193,7 @@ def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot = True):
         # Create subdirectory if necessary
         fitPlotsDir.mkdir(exist_ok = True)
         plotFileName = (molecule + '_' + phase + '_' + str(int(pressure)) +
-                        'bar_fit.png')
+                        'bar_fit.pdf')
         plotPath     = fitPlotsDir / plotFileName
 
         # Save plot
@@ -182,14 +202,14 @@ def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot = True):
     return coeffs
 
 
-def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
+def ChemApp_file(coeffs, nucleobase, reactionNo, pressure, tempMax):
     """
     Write ChemApp input file and store it in './input_ChemApp/' subdirectory.
     Return initial concentrations in the order they were written to the file
     as list of float.
 
     Parameters:
-        coeffs      : list of dict of list
+        coeffs        : list of dict of list
             List of dictionaries containing fitted Gibbs energy
             coefficients. First element has to contain dictionary for gas
             phase, second for aqeous phase and third for condensed phase.
@@ -197,19 +217,21 @@ def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
             string and values are a list with numpy.array containing the
             coefficents as first element and given initial concentration
             as second element.
-        nucleobase  : str
+        nucleobase    : str
             Name of nucleobase reaction results in.
-        reactionNum : int
+        reactionNo    : int
             Number of reaction.
-        pressure    : float
+        pressure      : float
             Pressure in unit [bar].
-        tempMax     : float
+        tempMax       : float
                  Temperature up to which data is valid in unit Kelvin.
 
     Returns:
-        initConcs   : list of float
+        initConcs     : list of float
             List of inital concentrations of molecules in order they
             where written to ChemApp input file.
+        indicesNucleo : list of int
+            Index of nucleobase in initConcs.
     """
     # Identify for molecules necessary elements
     elementsSet = set()
@@ -224,10 +246,11 @@ def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
     fileDir = pathlib.Path('.') / 'input_ChemApp'
     # Create subdirectory if necessary
     fileDir.mkdir(exist_ok = True)
-    filePath = fileDir / (nucleobase + '_' + str(reactionNum) + '_' +
+    filePath = fileDir / (nucleobase + '_' + str(reactionNo) + '_' +
                           str(int(pressure)) + 'bar.dat')
 
     initConcs = []
+    indicesNucleo = []
     with filePath.open(mode = 'w') as f:
         ####
         # Header lines
@@ -304,9 +327,15 @@ def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
 
                 for molecule in coeffs[i]:
                     f.write(to_FORTRAN_str(molecule.upper()) + '\n')
+
                     # Store initial concentrations in order they are written to
                     # file
                     initConcs.append(coeffs[i][molecule][1])
+
+                    # Find index of nucleobase in 'initConcs'
+                    if molecule == nucleobase:
+                        indicesNucleo.append(int(len(initConcs) - 1))
+
                     f.write('1  1   ')
                     for element in elementsList:
                         f.write(str(np.nan_to_num(elementsComp.loc[molecule,
@@ -333,4 +362,10 @@ def ChemApp_file(coeffs, nucleobase, reactionNum, pressure, tempMax):
                     write_gibbs_coeffs(coeffs[i][molecule][0], tempMax)
                     f.write('\n')
 
-    return initConcs
+    # Check if index of nucleobase was found
+    if len(indicesNucleo) == 0:
+        errorStr =  'Position to which nucleobase was written in ChemApp '
+        errorStr += 'input file was not found'
+        raise ValueError(errorStr)
+
+    return initConcs, indicesNucleo

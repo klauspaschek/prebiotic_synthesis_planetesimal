@@ -395,22 +395,10 @@ void open_file(std::string logDir, LI& err)
 }
 
 
-double amount(std::string nucleobase, std::string waterRole,
-              std::vector<DB> concs,
-              DB temperature, DB pressure,
-              std::string logDir,
-              LI& err)
+std::vector<double> amounts(std::vector<double> concs, std::string waterRole,
+                            DB temperature, DB pressure,
+                            std::string logDir, LI& err)
 {
-    // Uppercase char array for use with ChemApp
-    char nucleobaseStr[TQSTRLEN];
-    std::strcpy(nucleobaseStr, (char*)nucleobase.c_str());
-    for (std::size_t i(0); i < TQSTRLEN; ++i)
-        nucleobaseStr[i] = std::toupper(nucleobaseStr[i]);
-
-    // Open file to store molecular masses
-    std::ofstream molMassFile(logDir + "/mole_masses.dat",
-                              std::ofstream::app);
-
     // Set temperature and pressure
     LI numCon;
     tqsetc((char*)"T ", 0, 0, temperature, &numCon, &err);
@@ -423,7 +411,7 @@ double amount(std::string nucleobase, std::string waterRole,
     tqnop(&nPhase, &err);
     if (err) abort_prog(__LINE__, "tqnop", err);
 
-    // Set these initial concentrations in ChemApp
+    // Set initial concentrations in ChemApp
     int indexConcs(0);
     LI nPCon;
     for (LI i(1); i <= nPhase; ++i)
@@ -434,7 +422,8 @@ double amount(std::string nucleobase, std::string waterRole,
 
         for (LI j(1); j <= nPCon; ++j)
         {
-            tqsetc((char*)"ia ", i, j, concs[indexConcs], &numCon, &err);
+            tqsetc((char*)"ia ", i, j, static_cast<DB>(concs[indexConcs]),
+                   &numCon, &err);
             if (err) abort_prog(__LINE__, "tqsetc", err);
 
             ++indexConcs;
@@ -452,97 +441,33 @@ double amount(std::string nucleobase, std::string waterRole,
     tqcel((char*)" ", 0, 0, estim, &err);
     if (err) abort_prog(__LINE__, "tqcel", err);
 
-    // Change 'Amount' unit to gram for calculations of ppm
-    tqcsu((char*)"Amount ", (char*)"gram ", &err);
-    if (err) abort_prog(__LINE__, "tqcsu", err);
-
-    // Determine molecular masses of the phase constituents
-    std::vector< std::vector<DB> > molMass;
-    molMass.resize(nPhase);
+    // Determine new concentration of water for renormalization of
+    // concentrations of constituents.
+    // If water takes part in the reaction, collect corresponding indices
+    std::vector< std::pair<LI, LI> > indicesWater;
     for (LI i(1); i <= nPhase; ++i)
     {
         // Find number of constituents in phase
         tqnopc(i, &nPCon, &err);
         if (err) abort_prog(__LINE__, "tqnopc", err);
 
-        DB wMass;
-        // Get number of system components
-        LI nSCom;
-        tqnosc(&nSCom, &err);
-        if (err) abort_prog(__LINE__, "tqnosc", err);
-        DB stoi[nSCom];
         for (LI j(1); j <= nPCon; ++j)
         {
-            tqstpc(i, j, stoi, &wMass, &err);
-            if (err) abort_prog(__LINE__, "tqstpc", err);
-
-            molMass[i - 1].push_back(wMass);
-        }
-    }
-
-    // Change 'Amount' unit back to mol
-    tqcsu((char*)"Amount ", (char*)"mol ", &err);
-    if (err) abort_prog(__LINE__, "tqcsu", err);
-
-    // Write temperature and pressure to molecular masses output file
-    DB value;
-    // Temperature
-    tqgetr((char*)"T ", 0, 0, &value, &err);
-    if (err) abort_prog(__LINE__, "tqgetr", err);
-
-    molMassFile << "Temperature: " << value << std::endl;
-
-    // Pressure
-    tqgetr((char*)"P ", 0, 0, &value, &err);
-    if (err) abort_prog(__LINE__, "tqgetr", err);
-
-    molMassFile << "Pressure:    " << value << std::endl;
-
-    // Place equilibrium concentrations of nucleobases into molar masses
-    // output file
-    molMassFile << "Phase constituents molar masses [g/mol]:" << std::endl;
-
-    // If water takes part in the reaction, collect corresponding indices
-    std::vector< std::pair<LI, LI> > indicesWater;
-    // Also collect indices corresponding to wanted nucleobase
-    std::vector< std::pair<LI, LI> > indicesNucleobase;
-    // Also collect molar mass of wanted nucleobase
-    DB molMassNucleobase;
-    // Furthermore collect all molar masses and write them to output file
-    for (LI i(1); i <= nPhase; ++i)
-    {
-        tqnopc(i, &nPCon, &err);
-        if (err) abort_prog(__LINE__, "tqnopc", err);
-
-        for (LI j(1); j <= nPCon; ++j)
-        {
+            // Determine name of constituent
             char pCName[TQSTRLEN];
             tqgnpc(i, j, pCName, &err);
             if (err) abort_prog(__LINE__, "tqgnpc", err);
-
-            molMassFile << std::setw(10) << std::left << pCName
-                        << molMass[i - 1][j - 1] << std::endl;
 
             // Check if constituent is water and if collect corresponding
             // indices
             char h2oStr[TQSTRLEN] = "H2O";
             if (!std::strcmp(pCName, h2oStr))
                 indicesWater.push_back(std::make_pair(i, j));
-
-            // Check if constituent is the wanted nucleobase and collect
-            // corresponding indices & molar mass
-            if (!std::strcmp(pCName, nucleobaseStr))
-            {
-                indicesNucleobase.push_back(std::make_pair(i, j));
-                molMassNucleobase = molMass[i - 1][j - 1];
-            }
         }
     }
-    molMassFile << "\nEquilibrium amounts (species, mol, ppb)\n"
-                << std::endl;
 
     // If part of reaction, get concentration of water
-    DB waterConc(100.0);
+    DB waterConc(1.0);
     // Throw exception, if role of water is given as "solvent", but water
     // was given in reaction
     if (waterRole == "solvent" && indicesWater.size() != 0)
@@ -566,7 +491,7 @@ double amount(std::string nucleobase, std::string waterRole,
                 waterConc += phaseWaterConc;
             else
             {
-                std::string errorStr("Role of water was given " \
+                std::string errorStr("role of water was given " \
                                      "inconsistent to appearence of " \
                                      "water as reagent in reaction");
                 throw ErrorStr(errorStr);
@@ -574,23 +499,28 @@ double amount(std::string nucleobase, std::string waterRole,
         }
     }
 
-    // Collect total adenine abundance in moles
-    DB nucleobaseConc(0);
-    for (std::pair<LI, LI> indices:indicesNucleobase)
+    // Collect amounts to save them in 'concs'
+    indexConcs = 0;
+    for (LI i(1); i <= nPhase; ++i)
     {
-        DB phaseNucleobaseConc;
-        tqgetr((char*)"A ", indices.first, indices.second,
-               &phaseNucleobaseConc, &err);
-        if (err) abort_prog(__LINE__, "tqgetr", err);
+        tqnopc(i, &nPCon, &err);
+        if (err) abort_prog(__LINE__, "tqnopc", err);
 
-        nucleobaseConc += phaseNucleobaseConc;
+        for (LI j(1); j <= nPCon; ++j)
+        {
+            // Get amounts of constituents
+            DB constiAmount;
+            tqgetr((char*)"A ", i, j, &constiAmount, &err);
+            if (err) abort_prog(__LINE__, "tqgetr", err);
+
+            // Normalize constituent concentration to new found water
+            // concentration and save to 'concs' for return
+            concs[indexConcs] = static_cast<double>(constiAmount / waterConc);
+            ++indexConcs;
+        }
     }
 
-    // Get ratio of nucleobase X to water (kg X/kg water)
-    DB nucleobaseRatio( (nucleobaseConc * molMassNucleobase)
-                       /(waterConc      * 18.015));
-
-    return static_cast<double>(nucleobaseRatio);
+    return concs;
 }
 
 
@@ -618,10 +548,10 @@ PYBIND11_MODULE(ChemApp, m)
           "logDir"_a, "err"_a);
     m.def("open_file", &open_file, "Open log files.",
           "logDir"_a, "err"_a);
-    m.def("amount", &amount, "Calculate equilibrium amount of nucleobase and "
-          "return as float.",
-          "nucleobase"_a, "waterRole"_a, "concs"_a, "temperature"_a,
-          "pressure"_a, "logDir"_a, "err"_a);
+    m.def("amounts", &amounts, "Calculate equilibrium amounts of constituents "
+          "and return as array of floats.",
+          "waterRole"_a, "concs"_a, "temperature"_a, "pressure"_a, "logDir"_a,
+          "err"_a);
     m.def("close_file", &close_file, "Close log files.",
           "err"_a);
 }
