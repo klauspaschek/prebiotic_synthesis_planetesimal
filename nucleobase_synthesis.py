@@ -4,6 +4,8 @@ import matplotlib.ticker as mtick
 import pathlib
 import sys
 import csv
+import tqdm
+import contextlib
 
 # Custom python libraries
 import Water
@@ -15,9 +17,8 @@ import ChemApp
 
 
 def read_input(nucleobase, reactionNo):
-    '''
-    Read input file containing information about reactants involved in reaction
-    in './reaction_info' subdirectory.
+    '''Read input file containing information about reactants involved in
+    reaction in './reaction_info' subdirectory.
 
     Parameters:
         nucleobase : str
@@ -56,14 +57,14 @@ def read_input(nucleobase, reactionNo):
     # Read
     reactants = []
     with inputPath.open() as f:
-        readReactants = csv.reader(f, delimiter = ',')
+        readReactants = csv.reader(f, delimiter=',')
         for row in readReactants:
             reactants.append(row)
 
     # Find role of water in reaction
     waterRole = reactants[0][1]
-    if waterRole != 'solvent' and waterRole != 'reactant' and \
-       waterRole != 'product':
+    if waterRole != 'solvent' and waterRole != 'reactant' \
+       and waterRole != 'product':
         errorStr =  'Role of water in reaction has to be specified either as '
         errorStr += '\'solvent\', \'reactant\' or \'product\' as second '
         errorStr += 'element in first row of file \''
@@ -83,8 +84,7 @@ def read_input(nucleobase, reactionNo):
 
 
 def write_input_ChemApp(nucleobase, reactionNo, pressure, reactants):
-    '''
-    Create thermochemical input file for ChemApp.
+    '''Create thermochemical input file for ChemApp.
 
     Parameters:
         nucleobase    : str
@@ -129,9 +129,8 @@ def write_input_ChemApp(nucleobase, reactionNo, pressure, reactants):
 
 
 def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
-                       recursion = False, numbering = False):
-    '''
-    Iterate over given temperatures in parameter 'temps' and return
+                       recursion=False, numbering=False):
+    '''Iterate over given temperatures in parameter 'temps' and return
     corresponding equilibrium amounts of nucleobase.
 
     Parameters:
@@ -170,7 +169,7 @@ def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
 
     # Directory for ChemApp to write log files to
     logDir = pathlib.Path('.') / 'logs'
-    logDir.mkdir(exist_ok = True)
+    logDir.mkdir(exist_ok=True)
 
     # Path of thermochemical input file for ChemApp
     fileDir = pathlib.Path('.') / 'input_ChemApp'
@@ -178,8 +177,12 @@ def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
         errorStr =  'Directory \'' + str(fileDir) + '\'necessary for ChemApp '
         errorStr += 'to read input file from not found'
         raise NotADirectoryError(errorStr)
-    filePath = fileDir / (nucleobase + '_' + str(reactionNo) + '_' +
-                          str(int(pressure)) + 'bar.dat')
+    filePath = fileDir / (nucleobase
+                          + '_'
+                          + str(reactionNo)
+                          + '_'
+                          + str(int(pressure))
+                          + 'bar.dat')
     if not filePath.is_file():
         errorStr =  'File \'./' + str(filePath) + '\' '
         errorStr += 'containing thermochemical information about reactants '
@@ -222,26 +225,34 @@ def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
                 amounts[i] = amounts[i-1]
             else: # too hot, water boils and destroys formed nucleobase
                 amounts[i] = 0.0
-                result[indexNucleo] = 0.0#amounts[i]
+                for index in indicesNucleo:
+                    result[index] = 0.0#amounts[i]
 
     # Save amounts in .csv file
     # Compose file path to store .csv file to
-    amountsDir  = pathlib.Path('.') / 'results'
+    amountsDir = pathlib.Path('.') / 'results'
     # Create subdirectory if necessary
-    amountsDir.mkdir(exist_ok = True)
+    amountsDir.mkdir(exist_ok=True)
     if numbering:
-        amountsFile = amountsDir / (nucleobase + '_' + str(reactionNo) +
-                                    '_' + str(int(pressure)) + 'bar_amounts_' +
-                                    str(iter_temps_amounts.counter) +
-                                    '.csv')
+        amountsFile = amountsDir / (nucleobase
+                                    + '_'
+                                    + str(reactionNo)
+                                    + '_'
+                                    + str(int(pressure))
+                                    + 'bar_amounts_'
+                                    + str(iter_temps_amounts.counter)
+                                    + '.csv')
         iter_temps_amounts.counter += 1
     else:
-        amountsFile = amountsDir / (nucleobase + '_' + str(reactionNo) +
-                                    '_' + str(int(pressure)) +
-                                    'bar_amounts.csv')
+        amountsFile = amountsDir / (nucleobase
+                                    + '_'
+                                    + str(reactionNo)
+                                    + '_'
+                                    + str(int(pressure))
+                                    + 'bar_amounts.csv')
 
     # Write .csv file
-    with amountsFile.open(mode = 'w') as f:
+    with amountsFile.open(mode='w') as f:
         # Write header
         f.write('Temperature[K],Amount[mol ' + nucleobase + '/mol H2O]\n')
 
@@ -264,7 +275,7 @@ def plot_peak_temps(tempsData, targetNucleobase, reactionNo, pressure,
 
     # Directory for ChemApp to write log files to
     logDir = pathlib.Path('.') / 'logs'
-    logDir.mkdir(exist_ok = True)
+    logDir.mkdir(exist_ok=True)
 
     # Open log files
     ChemApp.open_file(str(logDir), err);
@@ -277,52 +288,58 @@ def plot_peak_temps(tempsData, targetNucleobase, reactionNo, pressure,
     # Unit conversion from
     # [mol nucleobase/mol water] to [kg nucleobase/kg planetesimal] in [ppb]
     amounts *= ((GibbsEnergy.molar_mass(targetNucleobase)
-                / GibbsEnergy.molar_mass('H2O'))
+                 / GibbsEnergy.molar_mass('H2O'))
                 * (rhoI / rhoP)
                 * phi
                 * 1e9)
 
     # Convert radii to km
-    radii   *= 1e-3
+    radii *= 1e-3
 
     # Plot amounts
     color = 'C0'
     fig, ax1 = plt.subplots()
-    ax1.plot(radii, amounts, color = color)
+    ax1.plot(radii, amounts, color=color)
     #ax1.set_yscale('log')
     #ax1.set_ylim(1, np.max(amounts) * 2)
     #ax1.set_xscale('log')
     ax1.set_xlabel('radius [km]')
-    ax1.set_ylabel('Nucleobase abundance [ppb]', color = color)
-    ax1.tick_params(axis = 'y', labelcolor = color)
+    ax1.set_ylabel('Nucleobase abundance [ppb]', color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
     ax1.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
 
     # Plot temperatures
     color = 'C1'
     ax2 = ax1.twinx()
-    ax2.plot(radii, temps, color = color)
-    ax2.set_ylabel(r'$T_{max}$ [K]', color = color)
-    ax2.tick_params(axis = 'y', labelcolor = color)
+    ax2.plot(radii, temps, color=color)
+    ax2.set_ylabel(r'$T_{max}$ [K]', color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
 
-    plt.title('Distribution of nucleobase ' + targetNucleobase + ' depending '
+    plt.title('Distribution of nucleobase '
+              + targetNucleobase
+              + ' depending '
               + 'on\ndistance from center of planetesimal',
               fontdict = {'fontsize': 10})
     fig.tight_layout()
 
     # Save plot
     plotDir = pathlib.Path('.') / 'results'
-    plotDir.mkdir(exist_ok = True)
-    plotPath = plotDir / (targetNucleobase + '_' + str(reactionNo) + '_' +
-                          str(int(pressure)) + 'bar_peak_temps_amounts.pdf')
+    plotDir.mkdir(exist_ok=True)
+    plotPath = plotDir / (targetNucleobase
+                          + '_'
+                          + str(reactionNo)
+                          + '_'
+                          + str(int(pressure))
+                          + 'bar_peak_temps_amounts.pdf')
 
     plt.savefig(str(plotPath))
 
 
 def plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
                    rhoI, rhoP, phi):
-    radii = tempsData[1::10, 0] * 1e-3 # unit [km]
+    radii = tempsData[1::10, 0      ]         # unit [km]
     time  = tempsData[0    , 1::step] * 1e-6  # unit [Myr]
-    temps = tempsData[1::10, 1::step]  # unit [K]
+    temps = tempsData[1::10, 1::step]         # unit [K]
 
     # Error variable to check execution of FORTRAN routines in ChemApp
     err = int(0)
@@ -332,17 +349,20 @@ def plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
 
     # Directory for ChemApp to write log files to
     logDir = pathlib.Path('.') / 'logs'
-    logDir.mkdir(exist_ok = True)
+    logDir.mkdir(exist_ok=True)
 
     # Open log files
     ChemApp.open_file(str(logDir), err);
 
     amounts = np.zeros([len(temps), len(time)])
     iter_temps_amounts.counter = 0
-    for i in range(len(temps)):
-        amounts[i] = iter_temps_amounts(targetNucleobase, reactionNo, pressure,
-                                        temps[i],
-                                        recursion = True, numbering = True)
+    with std_out_err_redirect_tqdm() as origStdOut:
+        for i in tqdm.tqdm(range(len(temps)), file=origStdOut,
+                           dynamic_ncols=True):
+            amounts[i] = iter_temps_amounts(targetNucleobase, reactionNo,
+                                            pressure,
+                                            temps[i],
+                                            recursion=True, numbering=True)
 
     # Close log files
     ChemApp.close_file(err)
@@ -357,7 +377,7 @@ def plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
     # Unit conversion from
     # [mol nucleobase/mol water] to [kg nucleobase/kg planetesimal] in [ppb]
     amounts *= ((GibbsEnergy.molar_mass(targetNucleobase)
-                / GibbsEnergy.molar_mass('H2O'))
+                 / GibbsEnergy.molar_mass('H2O'))
                 * (rhoI / rhoP)
                 * phi
                 * 1e9)
@@ -365,17 +385,23 @@ def plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
     # Plot amounts
     fig, ax = plt.subplots()
     for i in range(len(amounts)):
-        ax.plot(time, amounts[i], label = '{:2.0f} km'.format(radii[i]))
-    #ax.set_yscale('log')#, linthreshy = np.nanmin(amounts))#, linscaley = )
+        ax.plot(time, amounts[i], label='{:2.0f} km'.format(radii[i]))
+    #ax.set_yscale('log')#, linthreshy=np.nanmin(amounts))#, linscaley=)
     #ax.set_ylim(3.7e-3, 3.8e-3)
     ax.set_xscale('log')
     #ax.set_xlim(1e0, 1e4)
     ax.set_xlabel('Time after formation [Myr]')
     ax.set_ylabel('Nucleobase abundance [ppb]')
-    #ax.tick_params(axis = 'y')
+
+    ####
+    ax.set_xlim(1e-3, 5e3)
+    ####
+
+    #ax.tick_params(axis='y')
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
 
-    plt.title('Temporal evolution of nucleobase ' + targetNucleobase
+    plt.title('Temporal evolution of nucleobase '
+              + targetNucleobase
               + ' depending on\ndistance from center of planetesimal',
               fontdict = {'fontsize': 10})
     plt.legend()
@@ -383,13 +409,46 @@ def plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
 
     # Save plot
     plotDir = pathlib.Path('.') / 'results'
-    plotDir.mkdir(exist_ok = True)
-    plotPath = plotDir / (targetNucleobase + '_' + str(reactionNo) + '_' +
-                          str(int(pressure)) + 'bar_time_iter_amounts.pdf')
+    plotDir.mkdir(exist_ok=True)
+    plotPath = plotDir / (targetNucleobase
+                          + '_'
+                          + str(reactionNo)
+                          + '_'
+                          + str(int(pressure))
+                          + 'bar_time_iter_amounts.pdf')
 
     plt.savefig(str(plotPath))
 
 
+
+####
+# Redirect print to 'tqdm.tqdm.write()' for correct behavior of progress bar
+####
+
+class DummyTqdmFile(object):
+    """Dummy file-like that will write to tqdm"""
+    file = None
+    def __init__(self, file):
+        self.file = file
+    def flush(self):
+        getattr(self.file, 'flush', lambda: None)()
+    def write(self, x):
+        # Avoid print() second call (useless \n)
+        if len(x.rstrip()) > 0:
+            tqdm.tqdm.write(x, file=self.file, end='')
+
+@contextlib.contextmanager
+def std_out_err_redirect_tqdm():
+    origOutErr = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = map(DummyTqdmFile, origOutErr)
+        yield origOutErr[0]
+    # Relay exceptions
+    except Exception as exc:
+        raise exc
+    # Always restore sys.stdout/err if necessary
+    finally:
+        sys.stdout, sys.stderr = origOutErr
 
 ####
 # Command line arguments
@@ -415,11 +474,13 @@ pressure         = float(sys.argv[3])
 tempsDir  = pathlib.Path('.') / 'temps_input'
 tempsPath = tempsDir          / '100km.csv'
 
-tempsData = np.genfromtxt(tempsPath, delimiter = ',', unpack = True)
+tempsData = np.genfromtxt(tempsPath, delimiter=',', unpack=True)
 
+'''
 # Print amounts to console
-#for i in range(len(temps)):
-#    print('{:2.0f}   {:.2f}  {:.5e}'.format(i, temps[i], amounts[i]))
+for i in range(len(temps)):
+    print('{:2.0f}   {:.2f}  {:.5e}'.format(i, temps[i], amounts[i]))
+'''
 
 ####
 # Plot
@@ -429,9 +490,13 @@ rhoI = 917  # density of water ice [kg/m^3]
 rhoP = 3000 # density of planetesimal [kg/m^3]
 phi  = 0.2  # porosity
 
+plt.rcParams.update({'figure.max_open_warning': 0})
+
 plot_peak_temps(tempsData, targetNucleobase, reactionNo, pressure,
                 rhoI, rhoP, phi)
 
 step = 1
 plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
                rhoI, rhoP, phi)
+
+print('\n*** DONE ***')

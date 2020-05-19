@@ -17,7 +17,7 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * for (LI i(1); i <= size; ++i)    // LI is int usable with ChemApp routines
  *     tq...(..., i, ..., &err);    // ChemApp routine
- *     someVariable = someContainer[i - 1];
+ *     someVariable = someContainer[i - 1];    // C/C++ container
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 
@@ -42,6 +42,7 @@
 // pybind11
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/iostream.h>
 namespace py = pybind11;
 using namespace pybind11::literals;
 
@@ -51,9 +52,16 @@ using namespace pybind11::literals;
 // routine it occured in before it exits the program
 void abort_prog(int lineNo, std::string funcName, LI errorNo)
 {
-    std::cout << "ChemApp error no. " << errorNo << " occured when calling "
-              << funcName << ".\nAborting on line " << lineNo << " of \'"
-              << __FILE__ << "\'." << std::endl;
+    std::cout << "ChemApp error no. "
+              << errorNo
+              << " occured when calling "
+              << funcName
+              << ".\nAborting on line "
+              << lineNo
+              << " of \'"
+              << __FILE__
+              << "\'."
+              << std::endl;
     exit(errorNo);
 }
 
@@ -129,9 +137,13 @@ void start(LI& err)
     if (err) abort_prog(__LINE__, "tqgtpi", err);
 
     // Print the licensee's user ID, name and program ID
-    std::cout << "Licensee\'s user ID: " << id
-              << "\nLicensee\'s name: " << name
-              << "\nProgram ID: " << pid << "\n\n";
+    std::cout << "Licensee\'s user ID: "
+              << id
+              << "\nLicensee\'s name: "
+              << name
+              << "\nProgram ID: "
+              << pid
+              << "\n\n";
 
     // The following pieces of information are only meaningful if a version
     // of ChemApp is used that requires a dongle (hardware key).
@@ -148,13 +160,18 @@ void start(LI& err)
     // Print info if HASP dongle is used
     if (hasPid)
     {
-        std::cout << "HASP dongle type: " << hasPt
-                  << "\nHASP dongle id: " << hasPid
+        std::cout << "HASP dongle type: "
+                  << hasPt
+                  << "\nHASP dongle id: "
+                  << hasPid
                   << "\nChemApp license expiration date (month/year): "
-                  << edMon << "/" << edYear << "\n\n";
+                  << edMon
+                  << "/"
+                  << edYear
+                  << "\n\n";
     } else {
         std::cout << "This ChemApp version does not require a HASP hardware "
-                  << "key (dongle)" << "\n\n";
+                  << "key (dongle)\n\n";
     }
 
     // Get array sizes to get information about capabilities of ChemApp version
@@ -164,15 +181,24 @@ void start(LI& err)
            &lr, &err);
     if (err) abort_prog(__LINE__, "tqnsiz", err);
 
-    std::cout << std::setw(51) << std::left
-              << "Maximum number of constituents:"   << la
-              << std::setw(52) << std::left
-              << "\nMaximum number of system components:" << lb
-              << std::setw(52) << std::left
-              << "\nMaximum number of mixture phases:" << lc
-              << std::setw(52) << std::left
-              << "\nMaximum number of sublattices for a mixture phase:" << lf
-              << "\n" << std::endl;
+    std::cout << std::setw(51)
+              << std::left
+              << "Maximum number of constituents:"
+              << la
+              << std::setw(52)
+              << std::left
+              << "\nMaximum number of system components:"
+              << lb
+              << std::setw(52)
+              << std::left
+              << "\nMaximum number of mixture phases:"
+              << lc
+              << std::setw(52)
+              << std::left
+              << "\nMaximum number of sublattices for a mixture phase:"
+              << lf
+              << "\n"
+              << std::endl;
 }
 
 
@@ -187,7 +213,9 @@ void read_data(std::string fileName, LI& err)
     if (err) abort_prog(__LINE__, "tqgio", err);
 
     std::cout << "The thermochemical data will be read from the file "
-              << "associated with unit " << unitNo << "\n\n";
+              << "associated with unit "
+              << unitNo
+              << "\n\n";
 
     // Open ASCII thermochemical data-file for reading
     tqopna((char*)fileName.c_str(), unitNo, &err);
@@ -238,7 +266,8 @@ void read_data(std::string fileName, LI& err)
     tqnosc(&nSCom, &err);
     if (err) abort_prog(__LINE__, "tqnosc", err);
 
-    std::cout << "SYSTEM COMPONENTS\nNumber of system compoents: " << nSCom
+    std::cout << "SYSTEM COMPONENTS\nNumber of system compoents: "
+              << nSCom
               << std::endl;
 
     // Print the names of the system components and their masses
@@ -253,8 +282,13 @@ void read_data(std::string fileName, LI& err)
         tqstsc(i, stoi, &wMass, &err);
         if (err) abort_prog(__LINE__, "tqstsc", err);
 
-        std::cout << i << "    " << std::setw(19) << std::left << dstr
-                  << wMass << std::endl;
+        std::cout << i
+                  << "    "
+                  << std::setw(19)
+                  << std::left
+                  << dstr
+                  << wMass
+                  << std::endl;
     }
     std::cout << std::endl;
 
@@ -265,8 +299,10 @@ void read_data(std::string fileName, LI& err)
     if (err) abort_prog(__LINE__, "tqnop", err);
 
     // Print the names of the phases and their model names
-    std::cout << "PHASES\nNumber of phases: " << nPhase
-              << "\nNo.  Name of phase  Model" << std::endl;
+    std::cout << "PHASES\nNumber of phases: "
+              << nPhase
+              << "\nNo.  Name of phase  Model"
+              << std::endl;
 
     for (LI i(1); i <= nPhase; ++i)
     {
@@ -275,11 +311,17 @@ void read_data(std::string fileName, LI& err)
         tqmodl(i, dstr, &err);
         if (err) abort_prog(__LINE__, "tqmodl", err);
 
-        std::cout << i << "    " << std::setw(15) << std::left << pName
-                  << dstr << std::endl;
+        std::cout << i
+                  << "    "
+                  << std::setw(15)
+                  << std::left
+                  << pName
+                  << dstr
+                  << std::endl;
     }
     std::cout << "(PURE: Stoichiometric condensed phase, IDMX: Ideal mixing)"
-              << "\n" << std::endl;
+              << "\n"
+              << std::endl;
 
     // Get number of phase constituents of gas phase
     LI nPCon;
@@ -289,7 +331,8 @@ void read_data(std::string fileName, LI& err)
     // Print the names of the phase constituents and their Gibbs free energies
     // of formation
     std::cout << "PHASE CONSTITUENTS\nNumber of phase constituents of the "
-              << "first gas phase: " << nPCon
+              << "first gas phase: "
+              << nPCon
               << "\nPh.  Name of constituent  Gibbs [J/mol]\n";
 
     char pCName[TQSTRLEN];
@@ -317,8 +360,14 @@ void read_data(std::string fileName, LI& err)
 
             // G = H - T*S
             DB sGibbs(sEnthal - (298.15 * sEntrop));
-            std::cout << i << "    " << std::setw(19) << std::left << pCName
-                      << "  " << sGibbs << std::endl;
+            std::cout << i
+                      << "    "
+                      << std::setw(19)
+                      << std::left
+                      << pCName
+                      << "  "
+                      << sGibbs
+                      << std::endl;
         }
     }
     std::cout << std::endl;
@@ -356,8 +405,12 @@ void read_data(std::string fileName, LI& err)
 
                 // Print a table entry, and if it is not permitted, increase
                 // the total number of such phase constituents by 1
-                std::cout << std::setw(15) << std::left << pName
-                          << std::setw(19) << std::left << pCName;
+                std::cout << std::setw(15)
+                          << std::left
+                          << pName
+                          << std::setw(19)
+                          << std::left
+                          << pCName;
                 if (inPCIS == 0)
                 {
                     ++nPerm;
@@ -373,8 +426,11 @@ void read_data(std::string fileName, LI& err)
     // If there were phase constituents which cannot be used as incoming
     // species, print a note
     if (nPerm > 0)
-        std::cout << "Note: " << nPerm << " phase constituent(s) is/are not "
-                  << "permitted as incoming species" << std::endl;
+        std::cout << "Note: "
+                  << nPerm
+                  << " phase constituent(s) is/are not "
+                  << "permitted as incoming species"
+                  << std::endl;
 }
 
 
@@ -468,6 +524,8 @@ std::vector<double> amounts(std::vector<double> concs, std::string waterRole,
 
     // If part of reaction, get concentration of water
     DB waterConc(1.0);
+    if (waterRole == "reactant")
+        waterConc = 0.0;
     // Throw exception, if role of water is given as "solvent", but water
     // was given in reaction
     if (waterRole == "solvent" && indicesWater.size() != 0)
@@ -485,9 +543,7 @@ std::vector<double> amounts(std::vector<double> concs, std::string waterRole,
                    &phaseWaterConc, &err);
             if (err) abort_prog(__LINE__, "tqgetr", err);
 
-            if (waterRole == "reactant")
-                waterConc -= phaseWaterConc;
-            else if (waterRole == "product")
+            if (waterRole == "reactant" || waterRole == "product")
                 waterConc += phaseWaterConc;
             else
             {
@@ -543,15 +599,25 @@ PYBIND11_MODULE(ChemApp, m)
               "of FORTRAN library ChemApp.";
 
     m.def("start", &start, "Start ChemApp.",
-          "err"_a);
+          "err"_a,
+          py::call_guard<py::scoped_ostream_redirect,
+                         py::scoped_estream_redirect>());
     m.def("read_data", &read_data, "Read input file into ChemApp.",
-          "logDir"_a, "err"_a);
+          "logDir"_a, "err"_a,
+          py::call_guard<py::scoped_ostream_redirect,
+                         py::scoped_estream_redirect>());
     m.def("open_file", &open_file, "Open log files.",
-          "logDir"_a, "err"_a);
+          "logDir"_a, "err"_a,
+          py::call_guard<py::scoped_ostream_redirect,
+                         py::scoped_estream_redirect>());
     m.def("amounts", &amounts, "Calculate equilibrium amounts of constituents "
           "and return as array of floats.",
           "waterRole"_a, "concs"_a, "temperature"_a, "pressure"_a, "logDir"_a,
-          "err"_a);
+          "err"_a,
+          py::call_guard<py::scoped_ostream_redirect,
+                         py::scoped_estream_redirect>());
     m.def("close_file", &close_file, "Close log files.",
-          "err"_a);
+          "err"_a,
+          py::call_guard<py::scoped_ostream_redirect,
+                         py::scoped_estream_redirect>());
 }

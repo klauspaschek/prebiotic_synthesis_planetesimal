@@ -1,6 +1,5 @@
-"""
-Calculate the temperature of the boiling point of water for different pressures
-by 'inverting' an approximation formula using Newton-Raphson.
+"""Calculate the temperature of the boiling point of water for different
+pressures by 'inverting' an approximation formula using Newton-Raphson.
 """
 
 import numpy as np
@@ -9,9 +8,8 @@ import scipy.optimize
 
 
 def boiling_point(pressure):
-    """
-    Calculate approximate boiling point temperature T of water as function of
-    pressure P by using an approximation for the pressure temperature
+    """Calculate approximate boiling point temperature T of water as function
+    of pressure P by using an approximation for the pressure temperature
     dependence P(T) = f(T). By rearranging the formula as
     P(T) - f(T) = g(T) = 0 and finding the root using the Newton-Raphson method
     this formula is solved for T. Return T as float.
@@ -33,14 +31,14 @@ def boiling_point(pressure):
 
     # Rearranged function P(T) - f(T)
     def f(T):
-        return pressure - np.exp(a / T + b + c * T + d * T**2 + \
-                                 e * np.log(T)) * 1e-5
+        return pressure - np.exp(a/T + b + c*T + d*T**2 + e*np.log(T)) * 1e-5
 
     # Derivative of f(T)
     def fprime(T):
-        return -np.exp(a / T + b + c * T + d * T**2 + e * np.log(T)) * \
-               (-a / T**2 + c + 2 * d * T + e / T) * 1e-5
+        return (-np.exp(a/T + b + c*T + d*T**2 + e*np.log(T))
+                * (-a/T**2 + c + 2*d*T + e/T)
+                * 1e-5)
 
-    temperature = scipy.optimize.newton(f, 1000, fprime = fprime)
+    temperature = scipy.optimize.newton(f, 1000, fprime=fprime)
 
     return temperature
