@@ -261,6 +261,12 @@ def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
 
     return amounts
 
+def sci_fmt(x, pos):
+    if x <= 0:
+        return u"${:.0f}$".format(x)
+    else:
+        f = mtick.ScalarFormatter(useOffset=False, useMathText=True)
+        return u"${}$".format(f._formatSciNotation('%1.10e' % x))
 
 def plot_peak_temps(tempsData, targetNucleobase, reactionNo, pressure,
                     rhoI, rhoP, phi):
@@ -300,13 +306,11 @@ def plot_peak_temps(tempsData, targetNucleobase, reactionNo, pressure,
     color = 'C0'
     fig, ax1 = plt.subplots()
     ax1.plot(radii, amounts, color=color)
-    #ax1.set_yscale('log')
-    #ax1.set_ylim(1, np.max(amounts) * 2)
-    #ax1.set_xscale('log')
+    ax1.set_xlim(np.min(radii), 1.01 * np.max(radii))
     ax1.set_xlabel('radius [km]')
     ax1.set_ylabel('Nucleobase abundance [ppb]', color=color)
     ax1.tick_params(axis='y', labelcolor=color)
-    ax1.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
+    ax1.yaxis.set_major_formatter(mtick.FuncFormatter(sci_fmt))
 
     # Plot temperatures
     color = 'C1'
@@ -315,10 +319,11 @@ def plot_peak_temps(tempsData, targetNucleobase, reactionNo, pressure,
     ax2.set_ylabel(r'$T_{max}$ [K]', color=color)
     ax2.tick_params(axis='y', labelcolor=color)
 
-    plt.title('Distribution of nucleobase '
+    plt.title('Distribution of nucleobase $\\bf{'
               + targetNucleobase
-              + ' depending '
-              + 'on\ndistance from center of planetesimal',
+              + '}$ in reaction no. $\\bf{'
+              + str(reactionNo)
+              + '}$\ndepending on distance from center of planetesimal',
               fontdict = {'fontsize': 10})
     fig.tight_layout()
 
@@ -367,13 +372,6 @@ def plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
     # Close log files
     ChemApp.close_file(err)
 
-    '''
-    for i in range(len(amounts)):
-        for j in range(len(amounts[i])):
-            if amounts[i][j] < 1e-10:
-                amounts[i][j] = np.nan
-    '''
-
     # Unit conversion from
     # [mol nucleobase/mol water] to [kg nucleobase/kg planetesimal] in [ppb]
     amounts *= ((GibbsEnergy.molar_mass(targetNucleobase)
@@ -386,23 +384,18 @@ def plot_time_iter(tempsData, targetNucleobase, reactionNo, pressure, step,
     fig, ax = plt.subplots()
     for i in range(len(amounts)):
         ax.plot(time, amounts[i], label='{:2.0f} km'.format(radii[i]))
-    #ax.set_yscale('log')#, linthreshy=np.nanmin(amounts))#, linscaley=)
-    #ax.set_ylim(3.7e-3, 3.8e-3)
     ax.set_xscale('log')
-    #ax.set_xlim(1e0, 1e4)
     ax.set_xlabel('Time after formation [Myr]')
     ax.set_ylabel('Nucleobase abundance [ppb]')
-
-    ####
     ax.set_xlim(1e-3, 5e3)
-    ####
 
-    #ax.tick_params(axis='y')
-    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
+    ax.yaxis.set_major_formatter(mtick.FuncFormatter(sci_fmt))
 
-    plt.title('Temporal evolution of nucleobase '
+    plt.title('Temporal evolution of nucleobase $\\bf{'
               + targetNucleobase
-              + ' depending on\ndistance from center of planetesimal',
+              + '}$ in reaction no. $\\bf{'
+              + str(reactionNo)
+              + '}$\ndepending on distance from center of planetesimal',
               fontdict = {'fontsize': 10})
     plt.legend()
     fig.tight_layout()
