@@ -3,7 +3,7 @@ CXXFLAGS = -std=c++11 -Wall -shared -lgfortran
 PYBIND11FLAGS = -fPIC `python3 -m pybind11 --includes`
 PYBIND11SUFFIX = `python3-config --extension-suffix`
 
-LIBSDIR = ~/Documents/Studium/Sem11/Master/source_files/chemapp-v740/
+LIBSDIR = ./chemapp-v740/
 LIBS = $(LIBSDIR)libChemAppCS.so $(LIBSDIR)libEChemAppS.so
 
 

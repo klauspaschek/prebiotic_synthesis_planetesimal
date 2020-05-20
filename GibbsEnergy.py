@@ -20,13 +20,22 @@ import calendar
 
 
 # Elementary molecule composition
-elementsCompData = [{'H': 1, 'C': 1, 'N': 1},         # HCN
-                    {'H': 5, 'C': 5, 'N': 5},         # adenine
+elementsCompData = [{'H': 1, 'C': 1, 'N': 1        }, # HCN
+                    {'H': 5, 'C': 5, 'N': 5        }, # adenine
                     {'H': 2,                 'O': 1}, # H2O
-                    {'H': 3, 'N': 1},                 # NH3
-                    {'H': 2,},                        # H2
-                    {        'C': 1,         'O': 1}] # CO
-elementsCompIndices = ['HCN', 'adenine', 'H2O', 'NH3', 'H2', 'CO']
+                    {'H': 3,         'N': 1        }, # NH3
+                    {'H': 2                        }, # H2
+                    {        'C': 1,         'O': 1}, # CO
+                    {'H': 2, 'C': 1, 'N': 1, 'O': 1}, # CH2NO
+                    {'H': 2, 'C': 1,         'O': 1}, # formaldehyde
+                    {'H': 4, 'C': 4, 'N': 2, 'O': 2}, # uracil
+                    {'H': 5, 'C': 4, 'N': 3, 'O': 1}, # cytosine
+                    {'H': 5, 'C': 5, 'N': 5, 'O': 1}, # guanine
+                    {'H': 6, 'C': 5, 'N': 2, 'O': 2}, # thymine
+                    {'H': 2, 'C': 1,         'O': 2}] # formic acid
+elementsCompIndices = ['HCN', 'adenine', 'H2O', 'NH3', 'H2', 'CO', 'CH2NO',
+                       'formaldehyde', 'uracil', 'cytosine', 'guanine',
+                       'thymine', 'formic acid']
 elementsComp = pd.DataFrame(elementsCompData, index=elementsCompIndices,
                             dtype=float)
 
