@@ -60,8 +60,7 @@ void abort_prog(int lineNo, std::string funcName, LI errorNo)
               << lineNo
               << " of \'"
               << __FILE__
-              << "\'."
-              << std::endl;
+              << "\'.\n";
     exit(errorNo);
 }
 
@@ -117,8 +116,8 @@ void start(LI& err)
     tqerr((CHP)TQERRMSG, &err);
     if (err) abort_prog(__LINE__, "tqerr", err);
     for (int i(0); i < 3; ++i)
-        std::cout << TQERRMSG[i] << std::endl;
-    std::cout << std::endl;
+        std::cout << TQERRMSG[i] << "\n";
+    std::cout << "\n";
 
     // Get ChemApp version number
     LI caVers;
@@ -197,8 +196,7 @@ void start(LI& err)
               << std::left
               << "\nMaximum number of sublattices for a mixture phase:"
               << lf
-              << "\n"
-              << std::endl;
+              << "\n\n";
 }
 
 
@@ -231,27 +229,27 @@ void read_data(std::string fileName, LI& err)
 
     // Get default system units
     char dstr[TQSTRLEN];
-    std::cout << "DEFAULT SYSTEM UNITS:\nQuantity    Unit" << std::endl;
+    std::cout << "DEFAULT SYSTEM UNITS:\nQuantity    Unit\n";
 
     tqgsu((char*)"Pressure ", dstr, &err);
     if (err) abort_prog(__LINE__, "tqgsu", err);
-    std::cout << "Pressure    " << dstr << std::endl;
+    std::cout << "Pressure    " << dstr << "\n";
 
     tqgsu((char*)"Volume ", dstr, &err);
     if (err) abort_prog(__LINE__, "tqgsu", err);
-    std::cout << "Volume      " << dstr << std::endl;
+    std::cout << "Volume      " << dstr << "\n";
 
     tqgsu((char*)"Temperature ", dstr, &err);
     if (err) abort_prog(__LINE__, "tqgsu", err);
-    std::cout << "Temperature " << dstr << std::endl;
+    std::cout << "Temperature " << dstr << "\n";
 
     tqgsu((char*)"Energy ", dstr, &err);
     if (err) abort_prog(__LINE__, "tqgsu", err);
-    std::cout << "Energy      " << dstr << std::endl;
+    std::cout << "Energy      " << dstr << "\n";
 
     tqgsu((char*)"Amount ", dstr, &err);
     if (err) abort_prog(__LINE__, "tqgsu", err);
-    std::cout << "Amount      " << dstr << "\n" <<  std::endl;
+    std::cout << "Amount      " << dstr << "\n\n";
 
     // Change system unit (default of 'Amount' is mol)
     // Here we change the unit for the quantity 'Amount' to gram, mainly so
@@ -259,7 +257,7 @@ void read_data(std::string fileName, LI& err)
     // expressed in the unit g/mol
     tqcsu((char*)"Amount ", (char*)"gram ", &err);
     if (err) abort_prog(__LINE__, "tqcsu", err);
-    std::cout << "Amount unit set to gram for masses below\n" << std::endl;
+    std::cout << "Amount unit set to gram for masses below\n\n";
 
     // Get number of system components
     LI nSCom;
@@ -268,10 +266,10 @@ void read_data(std::string fileName, LI& err)
 
     std::cout << "SYSTEM COMPONENTS\nNumber of system compoents: "
               << nSCom
-              << std::endl;
+              << "\n";
 
     // Print the names of the system components and their masses
-    std::cout << "No.  Name of component  Mass [g/mol]" << std::endl;
+    std::cout << "No.  Name of component  Mass [g/mol]\n";
     for (LI i(1); i <= nSCom; ++i)
     {
         tqgnsc(i, dstr, &err);
@@ -288,9 +286,9 @@ void read_data(std::string fileName, LI& err)
                   << std::left
                   << dstr
                   << wMass
-                  << std::endl;
+                  << "\n";
     }
-    std::cout << std::endl;
+    std::cout << "\n";
 
     // Get number of phases
     LI nPhase;
@@ -301,8 +299,7 @@ void read_data(std::string fileName, LI& err)
     // Print the names of the phases and their model names
     std::cout << "PHASES\nNumber of phases: "
               << nPhase
-              << "\nNo.  Name of phase  Model"
-              << std::endl;
+              << "\nNo.  Name of phase  Model\n";
 
     for (LI i(1); i <= nPhase; ++i)
     {
@@ -317,11 +314,10 @@ void read_data(std::string fileName, LI& err)
                   << std::left
                   << pName
                   << dstr
-                  << std::endl;
+                  << "\n";
     }
     std::cout << "(PURE: Stoichiometric condensed phase, IDMX: Ideal mixing)"
-              << "\n"
-              << std::endl;
+              << "\n\n";
 
     // Get number of phase constituents of gas phase
     LI nPCon;
@@ -367,19 +363,18 @@ void read_data(std::string fileName, LI& err)
                       << pCName
                       << "  "
                       << sGibbs
-                      << std::endl;
+                      << "\n";
         }
     }
-    std::cout << std::endl;
+    std::cout << "\n";
 
     // Change system unit back to mol
     tqcsu((char*)"Amount ", (char*)"mol ", &err);
     if (err) abort_prog(__LINE__, "tqcsu", err);
-    std::cout << "Amount unit set back to mol" << "\n" << std::endl;
+    std::cout << "Amount unit set back to mol" << "\n\n";
 
     // Make sure everything can be used as an incoming species
-    std::cout << "Mixture phase  Phase constituent  Ok/Not permitted"
-              << std::endl;
+    std::cout << "Mixture phase  Phase constituent  Ok/Not permitted\n";
 
     LI nPerm(0);
     for (LI i(1); i <= nPhase; ++i)
@@ -414,14 +409,13 @@ void read_data(std::string fileName, LI& err)
                 if (inPCIS == 0)
                 {
                     ++nPerm;
-                    std::cout << "Not peritted" << std::endl;
+                    std::cout << "Not peritted\n";
                 } else {
-                    std::cout << "Ok" << std::endl;
+                    std::cout << "Ok\n";
                 }
             }
         }
     }
-    std::cout << std::endl;
 
     // If there were phase constituents which cannot be used as incoming
     // species, print a note
@@ -429,8 +423,7 @@ void read_data(std::string fileName, LI& err)
         std::cout << "Note: "
                   << nPerm
                   << " phase constituent(s) is/are not "
-                  << "permitted as incoming species"
-                  << std::endl;
+                  << "permitted as incoming species\n";
 }
 
 
