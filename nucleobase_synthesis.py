@@ -8,6 +8,7 @@ import csv
 import tqdm
 import contextlib
 import math
+import warnings
 
 # Custom python libraries
 import Water
@@ -269,7 +270,7 @@ def sci_fmt(x, pos):
         return u"${}$".format(f._formatSciNotation('%1.10e' % x))
 
 def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
-                    rhoI, rhoP, phi, tOF):
+                    rhoI, rhoP, phi, tOF, origStdOut):
     radii = tempsData[1:, 0] * 1e-3 # unit [km]
     temps = np.amax(tempsData[1:, 1:], axis = 1) # unit [Kelvin]
 
@@ -288,31 +289,32 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
 
     # Calculate amounts of nucleobase(s)
     amounts = []
-    with std_out_err_redirect_tqdm() as origStdOut:
-        with tqdm.tqdm(total=sum([len(nos) for nos in reactionNos]),
-                       file=origStdOut, dynamic_ncols=True) as pbar:
-            for i in range(len(targetNucleobases)):
-                amountsNucleobase = []
-                for j in range(len(reactionNos[i])):
-                    amountsNucleobaseNo = iter_temps_amounts(
-                                              targetNucleobases[i],
-                                              reactionNos[i][j],
-                                              pressure,
-                                              temps)
+    with tqdm.tqdm(total=sum([len(nos) for nos in reactionNos]),
+                   desc=' 1 of 2',
+                   leave=False, position=0,
+                   file=origStdOut, dynamic_ncols=True) as pbar:
+        for i in range(len(targetNucleobases)):
+            amountsNucleobase = []
+            for j in range(len(reactionNos[i])):
+                amountsNucleobaseNo = iter_temps_amounts(
+                                          targetNucleobases[i],
+                                          reactionNos[i][j],
+                                          pressure,
+                                          temps)
 
-                    # Unit conversion
-                    # from [mol nucleobase/mol water]
-                    # to [kg nucleobase/kg planetesimal] in [ppb]
-                    amountsNucleobaseNo *= ((GibbsEnergy.molar_mass(
-                                                 targetNucleobases[i])
-                                             / GibbsEnergy.molar_mass('H2O'))
-                                            * (rhoI / rhoP)
-                                            * phi
-                                            * 1e9)
+                # Unit conversion
+                # from [mol nucleobase/mol water]
+                # to [kg nucleobase/kg planetesimal] in [ppb]
+                amountsNucleobaseNo *= ((GibbsEnergy.molar_mass(
+                                             targetNucleobases[i])
+                                         / GibbsEnergy.molar_mass('H2O'))
+                                        * (rhoI / rhoP)
+                                        * phi
+                                        * 1e9)
 
-                    amountsNucleobase.append(amountsNucleobaseNo)
-                    pbar.update(1)
-                amounts.append(amountsNucleobase)
+                amountsNucleobase.append(amountsNucleobaseNo)
+                pbar.update(1)
+            amounts.append(amountsNucleobase)
 
     # Close log files
     ChemApp.close_file(err)
@@ -355,8 +357,6 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     ax1.tick_params(axis='both', which='both', top=True, direction='in',
                     labelsize=fontSize)
 
-    ax1.legend(handles=legendHandles, prop={'size': fontSize})
-
     # Plot temperatures
     color = 'C1'
     ax2 = ax1.twinx()
@@ -364,10 +364,12 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     ax2.set_ylabel(r'T$_{max}$ [K]', color=color, fontsize=fontSize)
     ax2.tick_params(axis='y', direction='in', labelcolor=color,
                     labelsize=fontSize)
+    ax2.set_zorder(ax1.get_zorder() - 1)
+    ax1.patch.set_visible(False)
 
     plt.title('Distribution of nucleobase abundances \ndepending on distance '
-              + 'from center of planetesimal at peak temperature.\nProperties of planetesimal: '
-              + r'Radius = '
+              + 'from center of planetesimal at peak temperature.\n'
+              + 'Properties of planetesimal: Radius = '
               + str(math.ceil(np.max(radii)))
               + r' km, $\rho$ = '
               + str(rhoP)
@@ -397,8 +399,17 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
                               + targetNucleobases[-1][0].upper()
                               + ' Synthesis')
 
-    ax2.text(0.02, 0.96, nucleobaseTextStr, transform=ax1.transAxes,
+    ax1.text(0.02, 0.96, nucleobaseTextStr, transform=ax1.transAxes,
              fontsize=fontSize, fontweight='bold')
+
+    # Legend
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', UserWarning)
+        ax1.legend(lines1 + lines2, labels1 + labels2, handles=legendHandles,
+                   loc='best', prop={'size': fontSize},
+                   bbox_to_anchor=(0., 0.,  1., 0.96))
 
     fig.tight_layout()
 
@@ -410,12 +421,14 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
         nucleobaseFileNameStr += nucleobase + '_'
     plotPath = plotDir / (nucleobaseFileNameStr
                           + str(int(pressure))
-                          + 'bar_peak_temps_amounts.pdf')
+                          + 'bar_peak_temps_amounts_radius_'
+                          + str(math.ceil(np.max(radii)))
+                          + 'km.pdf')
 
     plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0.01)
 
 def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
-                   rhoI, rhoP, phi, tOF):
+                   rhoI, rhoP, phi, tOF, origStdOut):
     time  = tempsData[0, 1::step] * 1e-6  # unit [Myr]
     temps = tempsData[1, 1::step]         # unit [K]
 
@@ -432,34 +445,36 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     # Open log files
     ChemApp.open_file(str(logDir), err);
 
+    # Calculate amounts of nucleobase(s)
     amounts = []
     iter_temps_amounts.counter = 0
-    with std_out_err_redirect_tqdm() as origStdOut:
-        with tqdm.tqdm(total=sum([len(nos) for nos in reactionNos]),
-                       file=origStdOut, dynamic_ncols=True) as pbar:
-            for i in range(len(targetNucleobases)):
-                amountsNucleobase = []
-                for j in range(len(reactionNos[i])):
-                    amountsNucleobaseNo = iter_temps_amounts(
-                                              targetNucleobases[i],
-                                              reactionNos[i][j],
-                                              pressure,
-                                              temps,
-                                              recursion=True, numbering=True)
+    with tqdm.tqdm(total=sum([len(nos) for nos in reactionNos]),
+                   desc=' 2 of 2',
+                   leave=False, position=0,
+                   file=origStdOut, dynamic_ncols=True) as pbar:
+        for i in range(len(targetNucleobases)):
+            amountsNucleobase = []
+            for j in range(len(reactionNos[i])):
+                amountsNucleobaseNo = iter_temps_amounts(
+                                          targetNucleobases[i],
+                                          reactionNos[i][j],
+                                          pressure,
+                                          temps,
+                                          recursion=True, numbering=True)
 
-                    # Unit conversion
-                    # from [mol nucleobase/mol water]
-                    # to [kg nucleobase/kg planetesimal] in [ppb]
-                    amountsNucleobaseNo *= ((GibbsEnergy.molar_mass(
-                                                 targetNucleobases[i])
-                                             / GibbsEnergy.molar_mass('H2O'))
-                                            * (rhoI / rhoP)
-                                            * phi
-                                            * 1e9)
+                # Unit conversion
+                # from [mol nucleobase/mol water]
+                # to [kg nucleobase/kg planetesimal] in [ppb]
+                amountsNucleobaseNo *= ((GibbsEnergy.molar_mass(
+                                             targetNucleobases[i])
+                                         / GibbsEnergy.molar_mass('H2O'))
+                                        * (rhoI / rhoP)
+                                        * phi
+                                        * 1e9)
 
-                    amountsNucleobase.append(amountsNucleobaseNo)
-                    pbar.update(1)
-                amounts.append(amountsNucleobase)
+                amountsNucleobase.append(amountsNucleobaseNo)
+                pbar.update(1)
+            amounts.append(amountsNucleobase)
 
     # Close log files
     ChemApp.close_file(err)
@@ -475,7 +490,7 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     linestyles = [(0, (2, 12)), (2, (2, 12)), (4, (2, 12)), (6, (2, 12)),
                   (8, (2, 12)), (10, (2, 12))]
     markers = [None, 'x']
-    markeverys = [None, (0, 3), None, (1, 3), None, (1, 3)]
+    markeverys = [None, (0, 30), None, (10, 30), None, (10, 30)]
     legendHandles=[]
     styleIndex = 0
 
@@ -496,7 +511,7 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
 
     ax1.set_xscale('log')
     ax1.set_xlabel('Time after formation [Myr]', fontsize=fontSize)
-    ax1.set_xlim(1e-3, 5e3)
+    ax1.set_xlim(np.min(time), np.max(time))#1e-3, 5e3)
     ax1.set_yscale('log')
     ax1.set_ylim(1e0, 3e6)
     ax1.set_ylabel('Nucleobase abundance [ppb]', fontsize=fontSize)
@@ -510,6 +525,8 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     ax2.set_ylabel(r'T$_{core}$ [K]', color=color, fontsize=fontSize)
     ax2.tick_params(axis='y', direction='in', labelcolor=color,
                     labelsize=fontSize)
+    ax2.set_zorder(ax1.get_zorder() - 1)
+    ax1.patch.set_visible(False)
 
     radii = tempsData[1:, 0] * 1e-3
     plt.title('Temporal evolution of nucleobase abundances in the center of '
@@ -547,8 +564,14 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     ax1.text(0.02, 0.96, nucleobaseTextStr, transform=ax1.transAxes,
              fontsize=fontSize, fontweight='bold')
 
-    ax1.legend(handles=legendHandles, prop={'size': fontSize},
-               loc='best', bbox_to_anchor=(0., 0.55, 1., 0.41))
+    # Legend
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', UserWarning)
+        ax1.legend(lines1 + lines2, labels1 + labels2, handles=legendHandles,
+                   loc='best', prop={'size': fontSize},
+                   bbox_to_anchor=(0., 0.,  1., 0.96))
 
     fig.tight_layout()
 
@@ -560,7 +583,9 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
         nucleobaseFileNameStr += nucleobase + '_'
     plotPath = plotDir / (nucleobaseFileNameStr
                           + str(int(pressure))
-                          + 'bar_time_iter_amounts.pdf')
+                          + 'bar_time_iter_amounts_radius_'
+                          + str(math.ceil(np.max(radii)))
+                          + 'km.pdf')
 
     plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0.01)
 
@@ -672,14 +697,6 @@ def std_out_err_redirect_tqdm():
 
 
 
-####
-# --------------------------- Main Program ------------------------------------
-####
-
-####
-# Command line arguments
-####
-
 # Dictionary with all possible reaction numbers
 reactionIndex = {'adenine' : [1, 3, 4, 6, 7, 8],
                  'uracil'  : [29, 32],
@@ -687,6 +704,7 @@ reactionIndex = {'adenine' : [1, 3, 4, 6, 7, 8],
                  'guanine' : [51, 54],
                  'thymine' : [58, 62]}
 
+# Dictionary with plot labels for all reaction numbers
 plotLabelIndex = {1: r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
                      + '+ H$_2$O',
                   3: r'3. 5HCN$_{(aq)}$ $\longrightarrow$ Adenine$_{(aq)}$',
@@ -711,6 +729,16 @@ plotLabelIndex = {1: r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
                       + r'$\longrightarrow$ Thymine$_{(aq)}$ + H$_2$O',
                   62: r'62. Uracil + CH$_2$O + CH$_2$O$_2$ + H$_2$O '
                       + r'$\longrightarrow$ Thymine'}
+
+
+
+####
+# --------------------------- Main Program ------------------------------------
+####
+
+####
+# Command line arguments
+####
 
 # Check if command line arguments are provided
 if len(sys.argv) < 2:
@@ -754,16 +782,6 @@ else:
         errorStr = 'Too many command line arguments provided'
         raise ValueError(errorStr)
 
-
-####
-# Read temperature input file
-####
-
-tempsDir  = pathlib.Path('.') / 'temps_input'
-tempsPath = tempsDir          / '100km.csv'
-
-tempsData = np.genfromtxt(tempsPath, delimiter=',', unpack=True)
-
 ####
 # Define properties of asteroid
 ####
@@ -774,17 +792,36 @@ phi  = 0.2  # porosity
 tOF  = 3.5  # time of formation after CAI [Myr]
 
 ####
-# Plot
+# Read temperature input file(s)
 ####
 
-# Disable warning of matplotlib for too many open figures
-plt.rcParams.update({'figure.max_open_warning': 0})
+tempsDir  = pathlib.Path('.') / 'temps_input'
+if not tempsDir.is_dir():
+    errorStr =  'Directory \'' + str(tempsDir) + '\'necessary '
+    errorStr += 'to read input temperature file(s) from not found'
+    raise NotADirectoryError(errorStr)
+tempsPaths = tempsDir.glob('**/*')
+tempsFiles = [x for x in tempsPaths]
 
-plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
-                rhoI, rhoP, phi, tOF)
+with std_out_err_redirect_tqdm() as origStdOut:
+    for i in tqdm.trange(len(tempsFiles), desc='overall', leave=False,
+                         position=1,
+                         file=origStdOut, dynamic_ncols=True):
+        tempsData = np.genfromtxt(tempsFiles[i], delimiter=',', unpack=True)
 
-step = 1
-plot_time_iter(tempsData, targetNucleobases, reactionNos, pressure, step,
-               rhoI, rhoP, phi, tOF)
+        ####
+        # Calculate amounts and plot
+        ####
+
+        # Disable warning of matplotlib for too many open figures
+        plt.rcParams.update({'figure.max_open_warning': 0})
+
+        plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
+                        rhoI, rhoP, phi, tOF, origStdOut)
+
+        step = 1
+        plot_time_iter(tempsData, targetNucleobases, reactionNos, pressure,
+                       step,
+                       rhoI, rhoP, phi, tOF, origStdOut)
 
 print('\n*** DONE ***')
