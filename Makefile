@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++11 -Wall -shared -lgfortran
+CXXFLAGS = -std=c++11 -Wall -shared -lgfortran -O3
 
 PYBIND11FLAGS = -fPIC `python3 -m pybind11 --includes`
 PYBIND11SUFFIX = `python3-config --extension-suffix`

@@ -130,7 +130,7 @@ def write_input_ChemApp(nucleobase, reactionNo, pressure, reactants):
     return initConcs, indicesNucleo, tempMax
 
 def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
-                       recursion=False, numbering=False):
+                       recursion=False, numbering=False, waterConc=None):
     '''Iterate over given temperatures in parameter 'temps' and return
     corresponding equilibrium amounts of nucleobase.
 
@@ -164,6 +164,12 @@ def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
                                                             reactionNo,
                                                             pressure,
                                                             reactants)
+
+    if not waterConc == None:
+        for i in range(len(initConcs)):
+            if not initConcs[i] == 1.0:
+                initConcs[i] = initConcs[i] * waterConc
+    #initConcs = [i * waterConc for i in initConcs]
 
     # Error variable to check execution of FORTRAN routines in ChemApp
     err = int(0)
@@ -270,7 +276,7 @@ def sci_fmt(x, pos):
         return u"${}$".format(f._formatSciNotation('%1.10e' % x))
 
 def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
-                    rhoI, rhoP, phi, tOF, origStdOut):
+                    rhoI, rhoP, phi, tOF, origStdOut, waterConc=None):
     radii = tempsData[1:, 0] * 1e-3 # unit [km]
     temps = np.amax(tempsData[1:, 1:], axis = 1) # unit [Kelvin]
 
@@ -300,7 +306,11 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
                                           targetNucleobases[i],
                                           reactionNos[i][j],
                                           pressure,
-                                          temps)
+                                          temps,
+                                          waterConc=waterConc)
+
+                if targetNucleobases[i] == 'ribose':
+                    amountsNucleobaseNo *= yieldRibose
 
                 # Unit conversion
                 # from [mol nucleobase/mol water]
@@ -327,6 +337,7 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     del colors[5]
     del colors[4]
     del colors[1]
+    colors.append('black')
     linestyles = [(0, (2, 12)), (2, (2, 12)), (4, (2, 12)), (6, (2, 12)),
                   (8, (2, 12)), (10, (2, 12))]
     markers = [None, 'x']
@@ -352,8 +363,9 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     ax1.set_xlim(np.min(radii), math.ceil(np.max(radii)))
     ax1.set_xlabel('Radius [km]', fontsize=fontSize)
     ax1.set_yscale('log')
-    ax1.set_ylim(1e0, 3e6)
-    ax1.set_ylabel('Nucleobase abundance [ppb]', fontsize=fontSize)
+    _, ylimTop = ax1.get_ylim()
+    ax1.set_ylim(1e0, ylimTop * 2)
+    ax1.set_ylabel('Molecule abundance [ppb]', fontsize=fontSize)
     ax1.tick_params(axis='both', which='both', top=True, direction='in',
                     labelsize=fontSize)
 
@@ -367,20 +379,29 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     ax2.set_zorder(ax1.get_zorder() - 1)
     ax1.patch.set_visible(False)
 
-    plt.title('Distribution of nucleobase abundances \ndepending on distance '
-              + 'from center of planetesimal at peak temperature.\n'
-              + 'Properties of planetesimal: Radius = '
-              + str(math.ceil(np.max(radii)))
-              + r' km, $\rho$ = '
-              + str(rhoP)
-              + r' kg/m$^3$, $\rho_{ice}$ = '
-              + str(rhoI)
-              + r' kg/m$^3$, porosity = '
-              + str(phi)
-              + ',\ntime of formation after CAI = '
-              + str(tOF)
-              + ' Myr.',
-              fontdict = {'fontsize': fontSize})
+    titleStr = ('Distribution of molecule abundances \ndepending on distance '
+                + 'from center of planetesimal at peak temperature.\n'
+                + 'Properties of planetesimal: Radius = '
+                + str(math.ceil(np.max(radii)))
+                + r' km, $\rho$ = '
+                + str(rhoP)
+                + r' kg/m$^3$, $\rho_{ice}$ = '
+                + str(rhoI)
+                + r' kg/m$^3$, porosity = '
+                + str(phi)
+                + ',\ntime of formation after CAI = '
+                + str(tOF)
+                + ' Myr.')
+    if 'ribose' in targetNucleobases:
+        titleStr += ('\nExperimentally found yield of ribose within 5C sugars '
+                     + 'used: '
+                     + str(yieldRibose)
+                     + '.')
+    if not waterConc == None:
+        titleStr += ('\nInitial water concentration changed by factor of '
+                     + str(waterConc)
+                     + '.')
+    plt.title(titleStr, fontdict = {'fontsize': fontSize})
 
     nucleobaseTextStr = ''
     if len(targetNucleobases) == 1:
@@ -428,7 +449,7 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0.01)
 
 def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
-                   rhoI, rhoP, phi, tOF, origStdOut):
+                   rhoI, rhoP, phi, tOF, origStdOut, waterConc=None):
     time  = tempsData[0, 1::step] * 1e-6  # unit [Myr]
     temps = tempsData[1, 1::step]         # unit [K]
 
@@ -460,7 +481,11 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
                                           reactionNos[i][j],
                                           pressure,
                                           temps,
-                                          recursion=True, numbering=True)
+                                          recursion=True, numbering=True,
+                                          waterConc=waterConc)
+
+                if targetNucleobases[i] == 'ribose':
+                    amountsNucleobaseNo *= yieldRibose
 
                 # Unit conversion
                 # from [mol nucleobase/mol water]
@@ -487,6 +512,7 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     del colors[5]
     del colors[4]
     del colors[1]
+    colors.append('black')
     linestyles = [(0, (2, 12)), (2, (2, 12)), (4, (2, 12)), (6, (2, 12)),
                   (8, (2, 12)), (10, (2, 12))]
     markers = [None, 'x']
@@ -513,8 +539,9 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     ax1.set_xlabel('Time after formation [Myr]', fontsize=fontSize)
     ax1.set_xlim(np.min(time), np.max(time))#1e-3, 5e3)
     ax1.set_yscale('log')
-    ax1.set_ylim(1e0, 3e6)
-    ax1.set_ylabel('Nucleobase abundance [ppb]', fontsize=fontSize)
+    _, ylimTop = ax1.get_ylim()
+    ax1.set_ylim(1e0, ylimTop * 2)
+    ax1.set_ylabel('Molecule abundance [ppb]', fontsize=fontSize)
     ax1.tick_params(axis='both', which='both', top=True, direction='in',
                     labelsize=fontSize)
 
@@ -529,20 +556,29 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     ax1.patch.set_visible(False)
 
     radii = tempsData[1:, 0] * 1e-3
-    plt.title('Temporal evolution of nucleobase abundances in the center of '
-              + 'the planetesimal.\nProperties of planetesimal: '
-              + r'Radius = '
-              + str(math.ceil(np.max(radii)))
-              + r' km, $\rho$ = '
-              + str(rhoP)
-              + r' kg/m$^3$, $\rho_{ice}$ = '
-              + str(rhoI)
-              + r' kg/m$^3$, porosity = '
-              + str(phi)
-              + ',\ntime of formation after CAI = '
-              + str(tOF)
-              + ' Myr.',
-              fontdict = {'fontsize': fontSize})
+    titleStr = ('Temporal evolution of molecule abundances in the center of '
+                + 'the planetesimal.\nProperties of planetesimal: '
+                + r'Radius = '
+                + str(math.ceil(np.max(radii)))
+                + r' km, $\rho$ = '
+                + str(rhoP)
+                + r' kg/m$^3$, $\rho_{ice}$ = '
+                + str(rhoI)
+                + r' kg/m$^3$, porosity = '
+                + str(phi)
+                + ',\ntime of formation after CAI = '
+                + str(tOF)
+                + ' Myr.')
+    if 'ribose' in targetNucleobases:
+        titleStr += ('\nExperimentally found yield of ribose within 5C sugars '
+                     + 'used: '
+                     + str(yieldRibose)
+                     + '.')
+    if not waterConc == None:
+        titleStr += ('\nInitial water concentration changed by factor of '
+                     + str(waterConc)
+                     + '.')
+    plt.title(titleStr, fontdict = {'fontsize': fontSize})
 
     nucleobaseTextStr = ''
     if len(targetNucleobases) == 1:
@@ -702,7 +738,8 @@ reactionIndex = {'adenine' : [1, 3, 4, 6, 7, 8],
                  'uracil'  : [29, 32],
                  'cytosine': [43, 44],
                  'guanine' : [51, 54],
-                 'thymine' : [58, 62]}
+                 'thymine' : [58, 62],
+                 'ribose'  : [100]}#, 101, 102
 
 # Dictionary with plot labels for all reaction numbers
 plotLabelIndex = {1: r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
@@ -728,7 +765,11 @@ plotLabelIndex = {1: r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
                   58: r'58. 2HCN$_{(aq)}$ + 3CH$_2$O$_{(aq)}$ '
                       + r'$\longrightarrow$ Thymine$_{(aq)}$ + H$_2$O',
                   62: r'62. Uracil + CH$_2$O + CH$_2$O$_2$ + H$_2$O '
-                      + r'$\longrightarrow$ Thymine'}
+                      + r'$\longrightarrow$ Thymine',
+                  100: r'100. 5CH$_2$O$_{(aq)}$ $\longrightarrow$ '
+                      + r'Ribose$_{(aq)}$',
+                  101: '101.',
+                  102: '102.'}
 
 
 
@@ -791,6 +832,13 @@ rhoP = 3000 # density of planetesimal [kg/m^3]
 phi  = 0.2  # porosity
 tOF  = 3.5  # time of formation after CAI [Myr]
 
+# Use to artificially change initial water concentration
+# If not desired, set to None
+waterConc = 0.0005#None
+
+# Set experimentally found yield of ribose within 5C sugars
+yieldRibose = 0.12#0.07
+
 ####
 # Read temperature input file(s)
 ####
@@ -817,11 +865,11 @@ with std_out_err_redirect_tqdm() as origStdOut:
         plt.rcParams.update({'figure.max_open_warning': 0})
 
         plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
-                        rhoI, rhoP, phi, tOF, origStdOut)
+                        rhoI, rhoP, phi, tOF, origStdOut, waterConc)
 
         step = 1
         plot_time_iter(tempsData, targetNucleobases, reactionNos, pressure,
                        step,
-                       rhoI, rhoP, phi, tOF, origStdOut)
+                       rhoI, rhoP, phi, tOF, origStdOut, waterConc)
 
 print('\n*** DONE ***')

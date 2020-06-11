@@ -32,10 +32,11 @@ elementsCompData = [{'H': 1, 'C': 1, 'N': 1        }, # HCN
                     {'H': 5, 'C': 4, 'N': 3, 'O': 1}, # cytosine
                     {'H': 5, 'C': 5, 'N': 5, 'O': 1}, # guanine
                     {'H': 6, 'C': 5, 'N': 2, 'O': 2}, # thymine
-                    {'H': 2, 'C': 1,         'O': 2}] # formic acid
+                    {'H': 2, 'C': 1,         'O': 2}, # formic acid
+                    {'H':10, 'C': 5,         'O': 5}] # ribose
 elementsCompIndices = ['HCN', 'adenine', 'H2O', 'NH3', 'H2', 'CO', 'CH2NO',
                        'formaldehyde', 'uracil', 'cytosine', 'guanine',
-                       'thymine', 'formic acid']
+                       'thymine', 'formic acid', 'ribose']
 elementsComp = pd.DataFrame(elementsCompData, index=elementsCompIndices,
                             dtype=float)
 
