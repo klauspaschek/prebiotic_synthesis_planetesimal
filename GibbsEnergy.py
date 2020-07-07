@@ -20,23 +20,32 @@ import calendar
 
 
 # Elementary molecule composition
-elementsCompData = [{'H': 1, 'C': 1, 'N': 1        }, # HCN
-                    {'H': 5, 'C': 5, 'N': 5        }, # adenine
-                    {'H': 2,                 'O': 1}, # H2O
-                    {'H': 3,         'N': 1        }, # NH3
-                    {'H': 2                        }, # H2
-                    {        'C': 1,         'O': 1}, # CO
-                    {'H': 2, 'C': 1, 'N': 1, 'O': 1}, # CH2NO
-                    {'H': 2, 'C': 1,         'O': 1}, # formaldehyde
-                    {'H': 4, 'C': 4, 'N': 2, 'O': 2}, # uracil
-                    {'H': 5, 'C': 4, 'N': 3, 'O': 1}, # cytosine
-                    {'H': 5, 'C': 5, 'N': 5, 'O': 1}, # guanine
-                    {'H': 6, 'C': 5, 'N': 2, 'O': 2}, # thymine
-                    {'H': 2, 'C': 1,         'O': 2}, # formic acid
-                    {'H':10, 'C': 5,         'O': 5}] # ribose
+elementsCompData = [{'H':   1, 'C':   1, 'N':   1          }, # HCN
+                    {'H':   5, 'C':   5, 'N':   5          }, # adenine
+                    {'H':   2,                     'O':   1}, # H2O
+                    {'H':   3,           'N':   1          }, # NH3
+                    {'H':   2                              }, # H2
+                    {          'C':   1,           'O':   1}, # CO
+                    {'H':   2, 'C':   1, 'N':   1, 'O':   1}, # CH2NO
+                    {'H':   2, 'C':   1,           'O':   1}, # formaldehyde
+                    {'H':   4, 'C':   4, 'N':   2, 'O':   2}, # uracil
+                    {'H':   5, 'C':   4, 'N':   3, 'O':   1}, # cytosine
+                    {'H':   5, 'C':   5, 'N':   5, 'O':   1}, # guanine
+                    {'H':   6, 'C':   5, 'N':   2, 'O':   2}, # thymine
+                    {'H':   2, 'C':   1,           'O':   2}, # formic acid
+                    {'H':  10, 'C':   5,           'O':   5}, # ribose
+                    {'H':  68, 'C': 128,           'O':   7}, # C128
+                    {'H':   1,                     'O':   1}, # OH-
+                    {'H':  13, 'C':  10, 'N':   5, 'O':   4}, # adenosine
+                    {'H':  12, 'C':   9, 'N':   2, 'O':   6}, # uridine
+                    {'H':  13, 'C':   9, 'N':   3, 'O':   5}, # cytidine
+                    {'H':  13, 'C':  10, 'N':   5, 'O':   5}, # guanosine
+                    {'H':  14, 'C':  10, 'N':   2, 'O':   6}] # thymidine
 elementsCompIndices = ['HCN', 'adenine', 'H2O', 'NH3', 'H2', 'CO', 'CH2NO',
                        'formaldehyde', 'uracil', 'cytosine', 'guanine',
-                       'thymine', 'formic acid', 'ribose']
+                       'thymine', 'formic acid', 'ribose', 'C128', 'OH-',
+                       'adenosine', 'uridine', 'cytidine', 'guanosine',
+                       'thymidine']
 elementsComp = pd.DataFrame(elementsCompData, index=elementsCompIndices,
                             dtype=float)
 

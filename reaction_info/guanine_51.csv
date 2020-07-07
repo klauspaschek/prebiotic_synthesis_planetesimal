@@ -1,6 +1,6 @@
 H2O,product
-CO,gas,0.175
-H2,gas,0.175
+CO,gas,0.00000175
+H2,gas,0.00000175
 NH3,gas,0.007
 H2O,liq,0.0
 guanine,aq,0.0

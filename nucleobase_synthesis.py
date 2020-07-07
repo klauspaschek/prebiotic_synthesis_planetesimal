@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticks
 import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
 import pathlib
 import sys
 import csv
@@ -275,6 +276,38 @@ def sci_fmt(x, pos):
         f = mticks.ScalarFormatter(useOffset=False, useMathText=True)
         return u"${}$".format(f._formatSciNotation('%1.10e' % x))
 
+def token(nucleobase):
+    if nucleobase == 'C128':
+        return nucleobase
+    elif nucleobase == 'adenosine':
+        return 'A-R'
+    elif nucleobase == 'uridine':
+        return 'U-R'
+    elif nucleobase == 'cytidine':
+        return 'C-R'
+    elif nucleobase == 'guanosine':
+        return 'G-R'
+    elif nucleobase == 'thymidine':
+        return 'T-R'
+    else:
+        return nucleobase[0].upper()
+
+def compValues(targetNubleobases):
+    result = []
+    for nucleobase in targetNucleobases:
+        if nucleobase == 'adenine':
+            result.append([1, 267, 'CM2 Adenine Abundances', 'salmon'])
+        elif nucleobase == 'guanine':
+            result.append([21, 515, 'CM2 Guanine Abundances', 'goldenrod'])
+        elif nucleobase == 'uracil':
+            result.append([37, 63, 'CM2 Uracil Abundances', 'lawngreen'])
+        elif nucleobase == 'ribose':
+            result.append([4.5, 25, 'CM2/CR2 Ribose Abundances',
+                           'lightskyblue'])
+
+    return result
+
+
 def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
                     rhoI, rhoP, phi, tOF, origStdOut, waterConc=None):
     radii = tempsData[1:, 0] * 1e-3 # unit [km]
@@ -360,12 +393,21 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
                                  label=plotLabelIndex[reactionNos[i][j]]))
             styleIndex += 1
 
+    # Shade regions representing experimentally found abundances in
+    # C chondrites for comparision
+    comp = compValues(targetNucleobases)
+    for elem in comp:
+        ax1.axhspan(elem[0], elem[1], alpha=0.3, color=elem[3])
+        legendHandles.append(mpatches.Patch(label=elem[2],
+                                            color=elem[3],
+                                            alpha=0.3))
+
     ax1.set_xlim(np.min(radii), math.ceil(np.max(radii)))
     ax1.set_xlabel('Radius [km]', fontsize=fontSize)
     ax1.set_yscale('log')
     _, ylimTop = ax1.get_ylim()
-    ax1.set_ylim(1e0, ylimTop * 2)
-    ax1.set_ylabel('Molecule abundance [ppb]', fontsize=fontSize)
+    ax1.set_ylim(1e0, ylimTop * 1.5)
+    ax1.set_ylabel('Molecular abundance [ppb]', fontsize=fontSize)
     ax1.tick_params(axis='both', which='both', top=True, direction='in',
                     labelsize=fontSize)
 
@@ -379,7 +421,7 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     ax2.set_zorder(ax1.get_zorder() - 1)
     ax1.patch.set_visible(False)
 
-    titleStr = ('Distribution of molecule abundances \ndepending on distance '
+    titleStr = ('Distribution of molecular abundances \ndepending on distance '
                 + 'from center of planetesimal at peak temperature.\n'
                 + 'Properties of planetesimal: Radius = '
                 + str(math.ceil(np.max(radii)))
@@ -403,21 +445,22 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
                      + '.')
     plt.title(titleStr, fontdict = {'fontsize': fontSize})
 
+    # Create text label to give overview over targeted molecules
     nucleobaseTextStr = ''
     if len(targetNucleobases) == 1:
-        nucleobaseTextStr = (targetNucleobases[0][0].upper()
+        nucleobaseTextStr = (token(targetNucleobases[0])
                              + ' Synthesis')
     elif len(targetNucleobases) == 2:
-        nucleobaseTextStr = (targetNucleobases[0][0].upper()
+        nucleobaseTextStr = (token(targetNucleobases[0])
                              + ' and '
-                             + targetNucleobases[1][0].upper()
+                             + token(targetNucleobases[1])
                              + ' Synthesis')
     else:
         for nucleobase in targetNucleobases[:-1]:
-            nucleobaseTextStr += str(nucleobase[0].upper()) + ', '
+            nucleobaseTextStr += (token(nucleobase) + ', ')
         nucleobaseTextStr = nucleobaseTextStr[:-2]
         nucleobaseTextStr += (' and '
-                              + targetNucleobases[-1][0].upper()
+                              + token(targetNucleobases[-1])
                               + ' Synthesis')
 
     ax1.text(0.02, 0.96, nucleobaseTextStr, transform=ax1.transAxes,
@@ -446,7 +489,8 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
                           + str(math.ceil(np.max(radii)))
                           + 'km.pdf')
 
-    plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0.01)
+    plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0.01,
+                transparent=True)
 
 def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
                    rhoI, rhoP, phi, tOF, origStdOut, waterConc=None):
@@ -535,13 +579,22 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
                                  label=plotLabelIndex[reactionNos[i][j]]))
             styleIndex += 1
 
+    # Shade regions representing experimentally found abundances in
+    # C chondrites for comparision
+    comp = compValues(targetNucleobases)
+    for elem in comp:
+        ax1.axhspan(elem[0], elem[1], alpha=0.3, color=elem[3])
+        legendHandles.append(mpatches.Patch(label=elem[2],
+                                            color=elem[3],
+                                            alpha=0.3))
+
     ax1.set_xscale('log')
     ax1.set_xlabel('Time after formation [Myr]', fontsize=fontSize)
     ax1.set_xlim(np.min(time), np.max(time))#1e-3, 5e3)
     ax1.set_yscale('log')
     _, ylimTop = ax1.get_ylim()
-    ax1.set_ylim(1e0, ylimTop * 2)
-    ax1.set_ylabel('Molecule abundance [ppb]', fontsize=fontSize)
+    ax1.set_ylim(1e0, ylimTop * 1.5)
+    ax1.set_ylabel('Molecular abundance [ppb]', fontsize=fontSize)
     ax1.tick_params(axis='both', which='both', top=True, direction='in',
                     labelsize=fontSize)
 
@@ -556,7 +609,7 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     ax1.patch.set_visible(False)
 
     radii = tempsData[1:, 0] * 1e-3
-    titleStr = ('Temporal evolution of molecule abundances in the center of '
+    titleStr = ('Temporal evolution of molecular abundances in the center of '
                 + 'the planetesimal.\nProperties of planetesimal: '
                 + r'Radius = '
                 + str(math.ceil(np.max(radii)))
@@ -582,19 +635,19 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
 
     nucleobaseTextStr = ''
     if len(targetNucleobases) == 1:
-        nucleobaseTextStr = (targetNucleobases[0][0].upper()
+        nucleobaseTextStr = (token(targetNucleobases[0])
                              + ' Synthesis')
     elif len(targetNucleobases) == 2:
-        nucleobaseTextStr = (targetNucleobases[0][0].upper()
+        nucleobaseTextStr = (token(targetNucleobases[0])
                              + ' and '
-                             + targetNucleobases[1][0].upper()
+                             + token(targetNucleobases[1])
                              + ' Synthesis')
     else:
         for nucleobase in targetNucleobases[:-1]:
-            nucleobaseTextStr += str(nucleobase[0].upper()) + ', '
+            nucleobaseTextStr += (token(nucleobase) + ', ')
         nucleobaseTextStr = nucleobaseTextStr[:-2]
         nucleobaseTextStr += (' and '
-                              + targetNucleobases[-1][0].upper()
+                              + token(targetNucleobases[-1])
                               + ' Synthesis')
 
     ax1.text(0.02, 0.96, nucleobaseTextStr, transform=ax1.transAxes,
@@ -623,7 +676,8 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
                           + str(math.ceil(np.max(radii)))
                           + 'km.pdf')
 
-    plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0.01)
+    plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0.01,
+                transparent=True)
 
 '''
 def plot_time_iter_radii(tempsData, targetNucleobase, reactionNo, pressure,
@@ -734,12 +788,18 @@ def std_out_err_redirect_tqdm():
 
 
 # Dictionary with all possible reaction numbers
-reactionIndex = {'adenine' : [1, 3, 4, 6, 7, 8],
-                 'uracil'  : [29, 32],
-                 'cytosine': [43, 44],
-                 'guanine' : [51, 54],
-                 'thymine' : [58, 62],
-                 'ribose'  : [100]}#, 101, 102
+reactionIndex = {'adenine'  : [1, 3, 4, 6, 7, 8],
+                 'uracil'   : [29, 32],
+                 'cytosine' : [43, 44],
+                 'guanine'  : [51, 54],
+                 'thymine'  : [58, 62],
+                 'ribose'   : [100],
+                 'C128'     : [200],
+                 'adenosine': [110],
+                 'uridine'  : [111],
+                 'cytidine' : [112],
+                 'guanosine': [113],
+                 'thymidine': [114]}
 
 # Dictionary with plot labels for all reaction numbers
 plotLabelIndex = {1: r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
@@ -767,9 +827,20 @@ plotLabelIndex = {1: r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
                   62: r'62. Uracil + CH$_2$O + CH$_2$O$_2$ + H$_2$O '
                       + r'$\longrightarrow$ Thymine',
                   100: r'100. 5CH$_2$O$_{(aq)}$ $\longrightarrow$ '
-                      + r'Ribose$_{(aq)}$',
-                  101: '101.',
-                  102: '102.'}
+                       + r'Ribose$_{(aq)}$',
+                  110: r'110. Adenine$_{(aq)}$ + Ribose$_{(aq)}$ '
+                       + r'$\longrightarrow$ Adenosine$_{(aq)}$ + H$_2$O',
+                  111: r'111. Uracil$_{(aq)}$ + Ribose$_{(aq)}$ '
+                       + r'$\longrightarrow$ Uridine$_{(aq)}$ + H$_2$O',
+                  112: r'112. Cytosine$_{(aq)}$ + Ribose$_{(aq)}$ '
+                       + r'$\longrightarrow$ Cytidine$_{(aq)}$ + H$_2$O',
+                  113: r'113. Guanine$_{(aq)}$ + Ribose$_{(aq)}$ '
+                       + r'$\longrightarrow$ Guanosine$_{(aq)}$ + H$_2$O',
+                  114: r'114. Thymine$_{(aq)}$ + Ribose$_{(aq)}$ '
+                       + r'$\longrightarrow$ Thymidine$_{(aq)}$ + H$_2$O',
+                  200: r'200. 128CH$_2$O$_{(aq)}$ $\longrightarrow$ '
+                       + r'C$_{128}$H$_{68}$O$_{7(cr)}$ + 54OH$^-_{(aq)}$ + '
+                       + r'67H$_2$O'}
 
 
 
@@ -834,7 +905,7 @@ tOF  = 3.5  # time of formation after CAI [Myr]
 
 # Use to artificially change initial water concentration
 # If not desired, set to None
-waterConc = 0.0005#None
+waterConc = None#0.0005
 
 # Set experimentally found yield of ribose within 5C sugars
 yieldRibose = 0.12#0.07
