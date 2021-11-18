@@ -40,12 +40,13 @@ elementsCompData = [{'H':   1, 'C':   1, 'N':   1          }, # HCN
                     {'H':  12, 'C':   9, 'N':   2, 'O':   6}, # uridine
                     {'H':  13, 'C':   9, 'N':   3, 'O':   5}, # cytidine
                     {'H':  13, 'C':  10, 'N':   5, 'O':   5}, # guanosine
-                    {'H':  14, 'C':  10, 'N':   2, 'O':   6}] # thymidine
+                    {'H':  14, 'C':  10, 'N':   2, 'O':   6}, # thymidine
+                    {'H':   4, 'C':   2, 'N':   0, 'O':   2}] # glycolaldehyde
 elementsCompIndices = ['HCN', 'adenine', 'H2O', 'NH3', 'H2', 'CO', 'CH2NO',
                        'formaldehyde', 'uracil', 'cytosine', 'guanine',
                        'thymine', 'formic acid', 'ribose', 'C128', 'OH-',
                        'adenosine', 'uridine', 'cytidine', 'guanosine',
-                       'thymidine']
+                       'thymidine', 'glycolaldehyde']
 elementsComp = pd.DataFrame(elementsCompData, index=elementsCompIndices,
                             dtype=float)
 
@@ -173,11 +174,38 @@ def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot=True):
     def gibbs_energy(T, a, b, c, d, e, f):
         return a + b*T + c*T*np.log(T) + d*T**2 + e*T**3 + f/T
 
-    # Obtain data from R database 'CHNOSZ'
-    data = R_data(molecule, phase, pressure, tempMax)
+    if not molecule == 'glycolaldehyde':
+        # Obtain data from R database 'CHNOSZ'
+        data = R_data(molecule, phase, pressure, tempMax)
 
-    # Fit gibbs energy coefficients
-    popt, pcov = scipy.optimize.curve_fit(gibbs_energy, data[0], data[1])
+        # Fit gibbs energy coefficients
+        popt, pcov = scipy.optimize.curve_fit(gibbs_energy, data[0], data[1])
+    else:
+        # Obtain data from R database 'CHNOSZ'
+        data1 = R_data('acetaldehyde', phase, pressure, tempMax)
+        data2 = R_data('acetic acid', phase, pressure, tempMax)
+
+        # fit gibbs energy coefficients
+        popt1, pcov1 = scipy.optimize.curve_fit(gibbs_energy, data1[0],
+                                                data1[1])
+        popt2, pcov2 = scipy.optimize.curve_fit(gibbs_energy, data2[0],
+                                                data2[1])
+
+        popt = np.zeros(len(popt1))
+        for i in range(len(popt1)):
+            popt[i] = popt1[i] * 0.616 + popt2[i] * 0.384
+
+        data = data1
+        # Use data from Ben Pearce
+#        data = np.genfromtxt('Glycolaldehyde_aq_Gibbs.dat',
+#                             skip_header=7, unpack=True)
+#        data = np.genfromtxt('Glycolaldehyde_aq_Gibbs_absolute_S.dat',
+#                             skip_header=8, unpack=True)
+#        data = np.genfromtxt('Glycolaldehyde_aq_Gibbs_exp_graphite.dat',
+#                             skip_header=8, unpack=True)
+#        print(data)
+#        data[1] = data[1] - 50
+#        popt, pcov = scipy.optimize.curve_fit(gibbs_energy, data[0], data[1] * 1e3)
 
     # Collect them in list of dict
     if phase == 'gas':
@@ -191,47 +219,110 @@ def fit(molecule, phase, initConc, coeffs, pressure, tempMax, plot=True):
         errStr += 'has to be either \'gas\', \'aq\', \'liq\' or \'cr\'!'
         raise ValueError(errStr)
 
-    # Plot data and fit if input parameter 'plot=True'
-    if (plot):
-        fig, ax = plt.subplots()
-
-        # Data
-        ax.scatter(data[0], data[1] * 1e-3, s=7,
-                   label='Data from CHNOSZ database')
-        ax.grid()
-
-        # Fit
-        fitLabel = 'Fit: %1.3f+%1.3fT+%1.3fTlogT+\n%1.3fT^2+%1.3fT^3+%1.3f/T' \
-                   % tuple(popt)
-        ax.plot(data[0], gibbs_energy(data[0], *popt) * 1e-3, color='C1',
-                label=fitLabel)
-
-        ax.set_xlabel('T [K]')
-        ax.set_ylabel('Gibbs energy of formation [kJ/mol]')
-        plt.title(molecule
-                  + ' ('
-                  + phase
-                  + ') at pressure of '
-                  + str(pressure)
-                  + ' bar')
-        plt.legend()
-
-        # Compose file path to store plot to
-        fitPlotsDir  = pathlib.Path('.') / 'fit_plots'
-        # Create subdirectory if necessary
-        fitPlotsDir.mkdir(exist_ok=True)
-        plotFileName = (molecule
-                        + '_'
-                        + phase
-                        + '_'
-                        + str(int(pressure))
-                        + 'bar_fit.pdf')
-        plotPath     = fitPlotsDir / plotFileName
-
-        # Save plot
-        plt.savefig(str(plotPath))
+#    # Plot data and fit if input parameter 'plot=True'
+#    if (plot):
+#        fig, ax = plt.subplots()
+#
+#        # Data
+##        ax.scatter(data[0], data[1] * 1e-3, s=7,
+##                   label='Data from CHNOSZ database')
+#        ax.grid()#which='both'
+#        plt.minorticks_on()
+#
+#####
+##        ax.scatter(data2[0][::5], data2[1][::5] * 1e-3, s=10,# marker='*',
+##                   label='acetic acid (CHNOSZ)')
+#####
+#
+#        # Fit
+#        fitLabel = 'Fit: %1.3f+%1.3fT+%1.3fTlogT+\n%1.3fT^2+%1.3fT^3+%1.3f/T' \
+#                   % tuple(popt)
+##        ax.scatter(data[0][::5], gibbs_energy(data[0][::5], *popt) * 1e-3, color='C2',
+##                marker='*', s=10,
+##                label='glycoladehyde (Cobb et al. (2015), CHNOSZ)')
+#
+#####
+##        dataBen = np.genfromtxt('Glycolaldehyde_aq_Gibbs.dat',
+##                                skip_header=7, unpack=True)
+##        ax.scatter(dataBen[0], dataBen[1], s=10, color='C3',
+##                   label='glycolaldehyde (Ben, formation S)')
+#        #ax.plot(ben_data[0], gibbs_energy(data[0], *cobb) * 1e-3, color='C2',
+#        #        label='Cobb', linestyle='dashed')
+##        popt, pcov = scipy.optimize.curve_fit(gibbs_energy, dataBen[0],
+##                                              dataBen[1])
+##        ax.plot(dataBen[0], gibbs_energy(dataBen[0], *popt), color='C4',
+##                linestyle='dashed',
+##                label='glycolaldehyde (Ben, fitted)')
+#        #ax.set_yscale('symlog')
+#
+##        dataBen1 = np.genfromtxt('Glycolaldehyde_aq_Gibbs_absolute_S.dat',
+##                                skip_header=8, unpack=True)
+##        ax.scatter(dataBen1[0], dataBen1[1], s=10, color='C4',
+##                   label='glycolaldehyde (Ben, absolute S)')
+#        formaldehyde = R_data('formaldehyde', 'aq', pressure, tempMax)
+#        ax.scatter(formaldehyde[0][::5], formaldehyde[1][::5] * 1e-3, s=10, color='C3',
+#                   marker='*',
+#                   label='formaldehyde (CHNOSZ)')
+##        ax.scatter(formaldehyde[0][::5],
+##                   (formaldehyde[1][::5] + gibbs_energy(data[0][::5], *popt) * 2) * 1e-3,
+##                   marker='*',#s=10,
+##                   color='C5', label='formal. + 2* glycolal. (Cobb et al. (2015), CHNOSZ)')
+##        ax.scatter(dataBen[0][:-1],
+##                   (formaldehyde[1][::16] + dataBen[1][:-1]*1e3 * 2) * 1e-3,
+##                   s=10, color='C8', label='forma. + 2*(Ben, formation S)')
+##        ax.scatter(dataBen1[0][:-1],
+##                   (formaldehyde[1][::16] + dataBen1[1][:-1]*1e3 * 2) * 1e-3,
+##                   s=10, color='C9', label='forma. + 2*(Ben, absolute S)')
+#        dataBen2 = np.genfromtxt('Glycolaldehyde_aq_Gibbs_exp_graphite.dat',
+#                                skip_header=8, unpack=True)
+#        ax.scatter(dataBen2[0], dataBen2[1], s=10, color='C6',
+#                   marker='*',
+#                   label='glycolaldehyde (Ben Pearce, exp. graphite)')
+#        ax.scatter(dataBen2[0][:-1],
+#                   (formaldehyde[1][::16] + dataBen2[1][:-1]*1e3 * 2) * 1e-3,
+#                   color='C8', marker='*',#s=10,
+#                   label='formal. + 2* glycolal. (Ben Pearce, exp. graphite)')
+#        ribose = R_data('ribose', 'aq', pressure, tempMax)
+#        ax.scatter(ribose[0][::5], ribose[1][::5] * 1e-3, s=25, color='C4',
+#                   #marker='*',
+#                   label='ribose (CHNOSZ)')
+#        ax.scatter(data1[0][::5], data1[1][::5] * 1e-3, s=10, marker='^',
+#                   label='acetaldehyde (CHNOSZ)')
+#        ax.scatter([298, 323], [-146.04, -161.43], s=10, color='C7', marker='^',
+#                   label='acetaldehyde (Ben Pearce, exp. graphite)')
+#        ax.set_xlim(273, 598)
+#        ax.set_ylim(-900, -100)
+#####
+#
+#        ax.set_xlabel('T [K]')
+#        ax.set_ylabel('Gibbs energy of formation [kJ/mol]')
+#        plt.title(molecule
+#                  + ' ('
+#                  + phase
+#                  + ') at pressure of '
+#                  + str(pressure)
+#                  + ' bar')
+#        plt.legend(bbox_to_anchor=(1, 1))
+#
+#        # Compose file path to store plot to
+#        fitPlotsDir  = pathlib.Path('.') / 'fit_plots'
+#        # Create subdirectory if necessary
+#        fitPlotsDir.mkdir(exist_ok=True)
+#        plotFileName = (molecule
+#                        + '_'
+#                        + phase
+#                        + '_'
+#                        + str(int(pressure))
+#                        + 'bar_fit.pdf')
+#        plotPath     = fitPlotsDir / plotFileName
+#
+#        # Save plot
+#        plt.savefig(str(plotPath), bbox_inches = 'tight', pad_inches = 0,
+#                    transparent=True)
 
     return coeffs
+
+#fit('glycolaldehyde', 'aq', 0.0004, [{}, {}, {}], 100., 580, plot=True)
 
 
 def ChemApp_file(coeffs, nucleobase, reactionNo, pressure, tempMax):
