@@ -1,5 +1,10 @@
 #  prebiotic synthesis planetesimal
+
+[![DOI](https://zenodo.org/badge/429479674.svg)](https://zenodo.org/badge/latestdoi/429479674)
+
 This code allows calculating the abundances of prebiotic molecules inside planetesimals in the early solar system, which could provide a potentially habitable world with key ingredients for the formation of life. Simulation in **C++** (which is using the proprietary **FORTRAN** library **ChemApp**, not included in repo), **Python3**, **R**, and a **Makefile** for easy building.
+
+[Klaus Paschek](https://www.mpia.de/institute/staff/113334) [![ORCID](https://info.orcid.org/wp-content/uploads/2019/11/orcid_16x16.png)](https://orcid.org/0000-0003-2603-4236), Max Planck Institute for Astronomy, Heidelberg, Germany
 
 ## Table of Contents
 1. [ChemApp](#chemapp)
