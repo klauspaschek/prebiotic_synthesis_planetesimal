@@ -132,4 +132,4 @@ Example **csv**:
 ```
 
 ## Resulting plots
-These temperature files are read in and the calculations are starting. The in the **Python3** script provided plotting routines will then provide the resulting plots in the subdirectory `./results/` as **pdf** files.
+These temperature files are read in and the calculations are starting. The in the **Python3** script provided plotting routines will then give the resulting plots in the subdirectory `./results/` as **pdf** files.
