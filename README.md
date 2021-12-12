@@ -1,5 +1,4 @@
 #  prebiotic synthesis planetesimal
-***
 This code allows calculating the abundances of prebiotic molecules inside planetesimals in the early solar system, which could provide a potentially habitable world with key ingredients for the formation of life. Simulation in **C++** (which is using the proprietary **FORTRAN** library **ChemApp**, not included in repo), **Python3**, **R**, and a **Makefile** for easy building.
 
 ## Table of Contents
@@ -12,11 +11,9 @@ This code allows calculating the abundances of prebiotic molecules inside planet
 
 
 ## ChemApp
-***
 This Code needs the proprietary **FORTRAN** library [ChemApp](https://gtt-technologies.de/software/chemapp/) to function. It is not provided in this repository. This software is distributed by _GTT-Technologies_ and provided by this company as binaries. A free light version with limited capabilities is available, the full functionality allowing for more chemical substances and elements is available as a paid version. For the chemical reactions provided here, the paid full version is necessary.
 
 ## Installation
-***
 After cloning this repository, the **ChemApp** binaries are needed. In the **Makefile** the directory containing the binaries has to be specified using the variable `LIBSDIR`. Open the **Makefile** and change the variable accordingly, e.g.:
 ```
 LIBSDIR = ./chemapp-v<your_version>/
@@ -66,7 +63,6 @@ pip3 install pybind11
 ```
 
 ## How to run
-***
 First, one has to compile the **C++** code together with **ChemApp** into a **Cython** module to be usable in **Python3**. This can be done easily using the **Makefile** by simply typing in the directory with the cloned directory:
 ```
 make
@@ -98,7 +94,6 @@ python3 prebiotic_synthesis.py adenine/ribose/cytosine
 ```
 
 ### Target molecules
-***
 The _target molecule(s)_ has/have to be set up (each) as a **csv** file in the subdirectory `./reaction_info/` with the filename as `<target_molecule>_<reaction no.>.csv`, e.g., `adenine_1.csv`.
 In these **csv** files the reactants and products have to be listed together with their phase and initial concentration (normalized to water), e.g.:
 ```sh
@@ -115,7 +110,6 @@ The first line defines the role of water and the second argument can be either `
 The phase of the molecule can be `gas`, `liq` (for water only), `aq` (aqueous --- solved in water), or `cr` (crystal --- solid).
 
 ### Planetesimal temperatures
-***
 The files giving the thermodynamic temperature profiles over time and for several radii inside the planetesimals have to be given in the subdirectory `./temps_input/` as **csv** files.
 In these files, the first row has to define the radii in meters inside the planetesimal, and the first column the time after formation in years. The temperatures have to be given in kelvins.
 | time | radius 1 | radius 2 | ... |
@@ -138,5 +132,4 @@ Example **csv**:
 ```
 
 ## Resulting plots
-***
 These temperature files are read in and the calculations are starting. The in the **Python3** script provided plotting routines will then provide the resulting plots in the subdirectory `./results/` as **pdf** files.
