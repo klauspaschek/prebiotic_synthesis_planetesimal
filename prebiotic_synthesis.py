@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-plt.style.use('./mdpi.mplstyle')
 import matplotlib.ticker as mticks
 import matplotlib.lines as mlines
 import matplotlib.patches as mpatches
+# Use desired matplotlib stylefile for setting fonts
+plt.style.use('./latex.mplstyle')
 # Load LaTeX libraries for matplotlib
-params = {'text.latex.preamble' : [r'\usepackage{mhchem, palatino, mathpazo}']}
+params = {'text.latex.preamble' : [r'\usepackage{mhchem}']}#, palatino, mathpazo}']}
 plt.rcParams.update(params)
 import pathlib
 import sys
@@ -90,6 +91,7 @@ def read_input(nucleobase, reactionNo):
 
     return reactants, waterRole
 
+
 def write_input_ChemApp(nucleobase, reactionNo, pressure, reactants):
     '''Create thermochemical input file for ChemApp.
 
@@ -133,6 +135,7 @@ def write_input_ChemApp(nucleobase, reactionNo, pressure, reactants):
                                                         pressure, tempMax)
 
     return initConcs, indicesNucleo, tempMax
+
 
 def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
                        recursion=False, numbering=False, waterConc=None):
@@ -273,6 +276,11 @@ def iter_temps_amounts(nucleobase, reactionNo, pressure, temps,
 
     return amounts
 
+
+####
+# Helper functions for example plotting routines below
+####
+
 def sci_fmt(x, pos):
     if x <= 0:
         return u"${:.0f}$".format(x)
@@ -300,17 +308,25 @@ def compValues(targetNubleobases):
     result = []
     for nucleobase in targetNucleobases:
         if nucleobase == 'adenine':
-            result.append([1, 267, 'CM2 Adenine Abundances', 'salmon'])
+            result.append([1, 267, 'CM2 A', 'salmon'])
+            #result.append([1, 267, 'CM2 Adenine Abundances', 'salmon'])
         elif nucleobase == 'guanine':
-            result.append([21, 515, 'CM2 Guanine Abundances', 'goldenrod'])
+            result.append([21, 515, 'CM2 G', 'goldenrod'])
+            #result.append([21, 515, 'CM2 Guanine Abundances', 'goldenrod'])
         elif nucleobase == 'uracil':
-            result.append([37, 63, 'CM2 Uracil Abundances', 'lawngreen'])
+            result.append([37, 63, 'CM2 U', 'lawngreen'])
+            #result.append([37, 63, 'CM2 Uracil Abundances', 'lawngreen'])
         elif nucleobase == 'ribose':
             result.append([4.5, 25, 'CM2/CR2 Ribose Abundances',
                            'lightskyblue'])
 
     return result
 
+
+
+####
+# Example plotting routines
+####
 
 def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
                     rhoI, rhoP, phi, tOF, origStdOut, waterConc=None):
@@ -529,6 +545,7 @@ def plot_peak_temps(tempsData, targetNucleobases, reactionNos, pressure,
     plt.savefig(str(plotPath),# bbox_inches = 'tight', pad_inches = 0,
                 transparent=True)
 
+
 def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
                    rhoI, rhoP, phi, tOF, origStdOut, waterConc=None):
     time  = tempsData[0, 1::step] * 1e-6  # unit [Myr]
@@ -739,7 +756,7 @@ def plot_time_iter(tempsData, targetNucleobases, reactionNo, pressure, step,
     plt.savefig(str(plotPath),# bbox_inches='tight', pad_inches=0,
                 transparent=True)
 
-'''
+
 def plot_time_iter_radii(tempsData, targetNucleobase, reactionNo, pressure,
                          step,
                          rhoI, rhoP, phi):
@@ -812,10 +829,15 @@ def plot_time_iter_radii(tempsData, targetNucleobase, reactionNo, pressure,
                           + 'bar_time_iter_amounts.pdf')
 
     plt.savefig(str(plotPath))
-'''
+
 
 def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
                               pressure, step, rhoI, rhoP, phi, tOF):
+
+    ####
+    # Radial distribution
+    ####
+
     radii = tempsData[1:, 0] * 1e-3 # unit [km]
     temps = np.amax(tempsData[1:, 1:], axis = 1) # unit [Kelvin]
 
@@ -868,21 +890,21 @@ def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
 
     # Plotting
     # Styling
-    #plt.rcParams["figure.figsize"] = (7.101, 3)
-    plt.rcParams["figure.figsize"] = (7.26913, 2.8)
-    #linestyles = [(0, (2, 10)), (2, (2, 10)), (4, (2, 10)), (6, (2, 10)),
-    #              (8, (2, 10)), (10, (2, 10))]
-    linestyles = [(0, (2, 8)), (2, (2, 8)), (4, (2, 8)), (6, (2, 8))]
-    #colors = plt.cm.viridis(np.linspace(0, 5/6, 6))
-    colors = plt.cm.viridis(np.linspace(0, 3/4, 4))
-    #color_temp = colors[2]
-    color_temp = colors[1]
-    #colors = np.delete(colors, 2, 0)
-    colors = np.delete(colors, 1, 0)
+    plt.rcParams["figure.figsize"] = (7.101, 2.7)
+    #plt.rcParams["figure.figsize"] = (7.26913, 2.8)
+    linestyles = [(0, (2, 10)), (2, (2, 10)), (4, (2, 10)), (6, (2, 10)),
+                  (8, (2, 10)), (10, (2, 10))]
+    #linestyles = [(0, (2, 8)), (2, (2, 8)), (4, (2, 8)), (6, (2, 8))]
+    colors = plt.cm.viridis(np.linspace(0, 5/6, 6))
+    #colors = plt.cm.viridis(np.linspace(0, 3/4, 4))
+    color_temp = colors[2]
+    #color_temp = colors[1]
+    colors = np.delete(colors, 2, 0)
+    #colors = np.delete(colors, 1, 0)
     colors = np.concatenate(([[0.01, 0.01, 0.01, 1.]], colors))
     markers = ['x', 'd', 'o', '^', 's', 'p']
-    #markeverys = [(0, 18), (3, 18), (6, 18), (9, 18), (12, 18), (15, 18)]
-    markeverys = [(0, 12), (3, 12), (6, 12), (9, 12)]#, (12, 18), (15, 18)]
+    markeverys = [(0, 18), (3, 18), (6, 18), (9, 18), (12, 18), (15, 18)]
+    #markeverys = [(0, 12), (3, 12), (6, 12), (9, 12)]#, (12, 18), (15, 18)]
     legendHandles=[]
     styleIndex = 0
 
@@ -930,7 +952,8 @@ def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
                                             color=plt.cm.viridis(0.99),
                                             alpha=0.3))
 
-    ax1.set_xlim(np.min(radii), math.ceil(np.max(radii)))
+    print(math.ceil(np.max(radii)))
+    ax1.set_xlim(0, math.ceil(np.max(radii)))
     ax1.set_xlabel('Radius [km]')
     ax1.set_yscale('log')
     #ax1.set_ylim(1e0, 6e2)
@@ -946,7 +969,7 @@ def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
     legendHandles.append(mlines.Line2D([], [],
                          color=color,
                          label=r'$T_{\mathrm{max}}$'))
-    ax2.set_xlim(0,150)
+    #ax2.set_xlim(0,np.max(radii))
     ax2.set_ylim(200, 525)
     ax2.tick_params(axis='y', direction='in', color=color)
     plt.setp(ax2.get_yticklabels(), visible=False)
@@ -977,9 +1000,9 @@ def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
 
 
 
-    ###########################################################################
-    #### Time iteration
-    ###########################################################################
+    ####
+    # Time iteration
+    ####
 
     time  = tempsData[0, 1::step] * 1e-6  # unit [Myr]
     temps = tempsData[1, 1::step]         # unit [K]
@@ -1035,19 +1058,19 @@ def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
 
     # Plotting
     # Styling
-    #linestyles = [(0, (2, 10)), (2, (2, 10)), (4, (2, 10)), (6, (2, 10)),
-    #              (8, (2, 10)), (10, (2, 10))]
-    linestyles = [(0, (2, 8)), (2, (2, 8)), (4, (2, 8)), (6, (2, 8))]
-    #colors = plt.cm.viridis(np.linspace(0, 5/6, 6))
-    colors = plt.cm.viridis(np.linspace(0, 3/4, 4))
-    #color_temp = colors[2]
-    color_temp = colors[1]
-    #colors = np.delete(colors, 2, 0)
-    colors = np.delete(colors, 1, 0)
+    linestyles = [(0, (2, 10)), (2, (2, 10)), (4, (2, 10)), (6, (2, 10)),
+                  (8, (2, 10)), (10, (2, 10))]
+    #linestyles = [(0, (2, 8)), (2, (2, 8)), (4, (2, 8)), (6, (2, 8))]
+    colors = plt.cm.viridis(np.linspace(0, 5/6, 6))
+    #colors = plt.cm.viridis(np.linspace(0, 3/4, 4))
+    color_temp = colors[2]
+    #color_temp = colors[1]
+    colors = np.delete(colors, 2, 0)
+    #colors = np.delete(colors, 1, 0)
     colors = np.concatenate(([[0.01, 0.01, 0.01, 1.]], colors))
     markers = ['x', 'd', 'o', '^', 's', 'p']
-    #markeverys = [(0, 90), (15, 90), (30, 90), (45, 90), (60, 90), (75, 90)]
-    markeverys = [(0, 56), (14, 56), (28, 56), (42, 56)]#, (60, 90), (75, 90)]
+    markeverys = [(0, 90), (15, 90), (30, 90), (45, 90), (60, 90), (75, 90)]
+    #markeverys = [(0, 56), (14, 56), (28, 56), (42, 56)]#, (60, 90), (75, 90)]
     styleIndex = 0
 
     # Plot amounts
@@ -1092,9 +1115,12 @@ def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
     ax3.set_xscale('log')
     ax3.set_xlabel('Time after formation [Myr]')
     ax3.set_xlim(np.min(time), np.max(time))
+
+    ax3.tick_params(axis='x', which='minor', labelbottom=False)
+
     ax3.set_yscale('log')
-    #ax3.set_ylim(1e0, 6e2)
-    ax1.set_ylim(1e0, 8e1)
+    ax3.set_ylim(1e0, 6e2)
+    #ax1.set_ylim(1e0, 8e1)
     #ax1.set_ylim(1e0, 1e4)
     #ax3.set_ylabel('Molecular abundance [ppb]')
     ax3.tick_params(axis='both', which='both', top=True, direction='in')
@@ -1142,9 +1168,14 @@ def plot_peak_temps_time_iter(tempsData, targetNucleobases, reactionNos,
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', UserWarning)
         ax2.legend(lines1 + lines2, labels1 + labels2, handles=legendHandles,
-                   loc=3, prop={'size': 7},
-                   #labelspacing=0.3,
-                   bbox_to_anchor=(0.009, 0.01,  0.984, 0.86))
+                   #loc=(0.19, 0.027),
+                   #loc=(0.022, 0.027),
+                   loc=(0.4, 0.027),
+                   #loc='best',
+                   prop={'size': 7},
+                   borderpad=0.3,
+                   handletextpad=0.4)#,
+                   #bbox_to_anchor=(0.022, 0.027,  0.973, 0.86))
 
     fig.tight_layout(pad=0)
     plt.subplots_adjust(wspace=0)
@@ -1197,6 +1228,10 @@ def std_out_err_redirect_tqdm():
 
 
 
+####
+# Dictionaries providing reaction numbers and legend labels for plots
+####
+
 # Dictionary with all possible reaction numbers
 reactionIndex = {'adenine'  : [1, 3, 4, 6, 7, 8],
                  'uracil'   : [29, 32],
@@ -1212,30 +1247,44 @@ reactionIndex = {'adenine'  : [1, 3, 4, 6, 7, 8],
                  'thymidine': [114]}
 
 # Dictionary with plot labels for all reaction numbers
-plotLabelIndex = {1: r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
-                     + '+ H$_2$O',
-                  3: r'3. 5HCN$_{(\mathrm{aq})}$ $\longrightarrow$ Adenine$_{(\mathrm{aq})}$',
-                  4: r'4. HCN + NH$_3$ $\longrightarrow$ Adenine',
-                  6: r'6. 5CO + 5NH$_3$ $\longrightarrow$ Adenine '
-                     + '+ 5H$_2$O',
-                  7: r'7. HCN + H$_2$O $\longrightarrow$ Adenine',
-                  8: r'8. HCN + NH$_3$ + H$_2$O $\longrightarrow$ Adenine',
-                  29: r'29. 2HCN$_{(\mathrm{aq})}$ + 2CH$_2$O$_{(\mathrm{aq})}$ '
-                      + r'$\longrightarrow$ Uracil$_{(\mathrm{aq})}$ + H$_{2(\mathrm{aq})}$',
-                  32: r'32. Cytosine + H$_2$O $\longrightarrow$ Uracil + '
-                      + r'NH$_3$',
-                  43: r'43. CO + H$_2$ + NH$_3$ $\longrightarrow$ Cytosine + '
-                      + r'H$_2$O',
-                  44: r'44. 3HCN$_{(\mathrm{aq})}$ + CH$_2$O$_{(\mathrm{aq})}$ $\longrightarrow$'
-                      + r' Cytosine$_{(\mathrm{aq})}$',
-                  51: r'51. CO + H$_2$ + NH$_3$ $\longrightarrow$ Guanine + '
-                      + r'H$_2$O',
-                  54: r'54. 5HCN$_{(\mathrm{aq})}$ + H$_2$O $\longrightarrow$ '
-                      + r'Guanine$_{(\mathrm{aq})}$ + H$_2(\mathrm{aq})$',
-                  58: r'58. 2HCN$_{(\mathrm{aq})}$ + 3CH$_2$O$_{(\mathrm{aq})}$ '
-                      + r'$\longrightarrow$ Thymine$_{(\mathrm{aq})}$ + H$_2$O',
-                  62: r'62. Uracil + CH$_2$O + CH$_2$O$_2$ + H$_2$O '
-                      + r'$\longrightarrow$ Thymine',
+plotLabelIndex = {1: r'1.\,A\,(FT)',
+                    # r'1. CO + H$_2$ + NH$_3$ $\longrightarrow$ Adenine '
+                    # + '+ H$_2$O',
+                  3: r'3.\,A\,(NC)',
+                    #r'3. 5HCN$_{(\mathrm{aq})}$ $\longrightarrow$ Adenine$_{(\mathrm{aq})}$',
+                  4: r'4.\,A\,(NC)',
+                    #r'4. HCN + NH$_3$ $\longrightarrow$ Adenine',
+                  6: r'6.\,A\,(NC)',
+                    #r'6. 5CO + 5NH$_3$ $\longrightarrow$ Adenine '
+                    # + '+ 5H$_2$O',
+                  7: r'7.\,A\,(NC)',
+                    #r'7. HCN + H$_2$O $\longrightarrow$ Adenine',
+                  8: r'8.\,A\,(NC)',
+                    #r'8. HCN + NH$_3$ + H$_2$O $\longrightarrow$ Adenine',
+                  29: r'29.\,U\hspace{17.7pt}(NC)',
+                     #r'29. 2HCN$_{(\mathrm{aq})}$ + 2CH$_2$O$_{(\mathrm{aq})}$ '
+                     # + r'$\longrightarrow$ Uracil$_{(\mathrm{aq})}$ + H$_{2(\mathrm{aq})}$',
+                  32: r'32.\,C\,$\rightarrow$\,U\,(NC)',
+                      #r'32. Cytosine + H$_2$O $\longrightarrow$ Uracil + '
+                      #+ r'NH$_3$',
+                  43: r'43.\,C\hspace{17.9pt}(FT)',
+                      #r'43. CO + H$_2$ + NH$_3$ $\longrightarrow$ Cytosine + '
+                      #+ r'H$_2$O',
+                  44: r'44.\,C\hspace{17.9pt}(NC)',
+                      #r'44. 3HCN$_{(\mathrm{aq})}$ + CH$_2$O$_{(\mathrm{aq})}$ $\longrightarrow$'
+                      #+ r' Cytosine$_{(\mathrm{aq})}$',
+                  51: r'51.\,G\hspace{17.4pt}(FT)',
+                      #r'51. CO + H$_2$ + NH$_3$ $\longrightarrow$ Guanine + '
+                      #+ r'H$_2$O',
+                  54: r'54.\,G\hspace{17.4pt}(NC)',
+                      #r'54. 5HCN$_{(\mathrm{aq})}$ + H$_2$O $\longrightarrow$ '
+                      #+ r'Guanine$_{(\mathrm{aq})}$ + H$_2(\mathrm{aq})$',
+                  58: r'58.\,T\hspace{17.9pt}(NC)',
+                      #r'58. 2HCN$_{(\mathrm{aq})}$ + 3CH$_2$O$_{(\mathrm{aq})}$ '
+                      #+ r'$\longrightarrow$ Thymine$_{(\mathrm{aq})}$ + H$_2$O',
+                  62: r'62.\,U\,$\rightarrow$\,T\,(NC)',
+                      #r'62. Uracil + CH$_2$O + CH$_2$O$_2$ + H$_2$O '
+                      #+ r'$\longrightarrow$ Thymine',
                   100: r'100. 5CH$_2$O$_{(\mathrm{aq})}$ $\longrightarrow$ '
                        + r'Ribose$_{(\mathrm{aq})}$',
                   101: r'101. $\ce{CH2O_{(\mathrm{aq})} + 2C2H4O2_{(\mathrm{aq})} -> \text{Ribose}_{(\mathrm{aq})}}$',

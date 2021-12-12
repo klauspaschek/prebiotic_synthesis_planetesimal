@@ -3,6 +3,7 @@ CXXFLAGS = -std=c++11 -Wall -shared -lgfortran -O3
 PYBIND11FLAGS = -fPIC `python3 -m pybind11 --includes`
 PYBIND11SUFFIX = `python3-config --extension-suffix`
 
+# Change to directory where binaries of ChemApp are stored
 LIBSDIR = ./chemapp-v740/
 LIBS = $(LIBSDIR)libChemAppCS.so $(LIBSDIR)libEChemAppS.so
 
