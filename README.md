@@ -6,6 +6,12 @@ This code allows calculating the abundances of prebiotic molecules inside planet
 
 [Klaus Paschek](https://www.mpia.de/institute/staff/113334) [![ORCID](https://info.orcid.org/wp-content/uploads/2019/11/orcid_16x16.png)](https://orcid.org/0000-0003-2603-4236), Max Planck Institute for Astronomy, Heidelberg, Germany
 
+**Publications based on this code:**
+
+- Paschek, K., Kohler, K., Pearce, B. K. D., Lange, K., Henning, T. K., Trapp, O., Pudritz, R. E., & Semenov, D. A. (2022). Possible Ribose Synthesis in Carbonaceous Planetesimals. *Life*, 12(3), 404. [doi:10.3390/life12030404](https://doi.org/10.3390/life12030404)
+- Paschek, K., Semenov, D. A., Pearce, B. K. D., Lange, K., Henning, T. K., & Pudritz, R. E. (2023). Meteorites and the RNA World: Synthesis of Nucleobases in Carbonaceous Planetesimals and the Role of Initial Volatile Content. *The Astrophysical Journal*, 942(1), 50. [doi:10.3847/1538-4357/aca27e](https://doi.org/10.3847/1538-4357/aca27e)
+- Paschek, K., Lee, M., Semenov, D. A., & Henning, T. K. (2024). Prebiotic Vitamin B<sub>3</sub> Synthesis in Carbonaceous Planetesimals. *ChemPlusChem*, 89(4), e202300508. [doi:10.1002/cplu.202300508](https://doi.org/10.1002/cplu.202300508)
+
 ## Table of Contents
 1. [ChemApp](#chemapp)
 2. [Installation](#installation)
@@ -13,7 +19,6 @@ This code allows calculating the abundances of prebiotic molecules inside planet
 4. [Target molecules](#target-molecules)
 5. [Planetesimal temperatures](#planetesimal-temperatures)
 6. [Resulting plots](#resulting-plots)
-
 
 ## ChemApp
 This Code needs the proprietary **FORTRAN** library [ChemApp](https://gtt-technologies.de/software/chemapp/) to function. It is not provided in this repository. This software is distributed by _GTT-Technologies_ and provided by this company as binaries. A free light version with limited capabilities is available, the full functionality allowing for more chemical substances and elements is available as a paid version. For the chemical reactions provided here, the paid full version is necessary.
